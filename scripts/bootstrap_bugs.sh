@@ -5,7 +5,9 @@ MANIFEST="${1:-bugs.tsv}"
 BASE_DIR="prepare/buggy_program/Collect_Methods/repos"
 
 while read -r proj id kind; do
-  [[ "$proj" =~ ^#|^$ ]] && continue  # skip comments / blanks
+  # skip header, comments, and blank lines
+  [[ "$proj" == "project" ]] && continue
+  [[ "$proj" =~ ^#|^$ ]] && continue
   case "$kind" in
     b) v="${id}b"; suffix="buggy" ;;
     f) v="${id}f"; suffix="fixed" ;;
