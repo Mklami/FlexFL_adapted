@@ -1,4 +1,3 @@
-# Construction of open-source model
 model_name = 'Llama3'
 ######################### START
 
@@ -7,8 +6,8 @@ from typing import List, Optional
 from llama import Dialog, Llama
 import torch.distributed as dist
 
-ckpt_dir: str = 'Meta-Llama-3-8B-Instruct/'
-tokenizer_path: str = 'Meta-Llama-3-8B-Instruct/tokenizer.model'
+ckpt_dir: str = '/home/m.lami/FlexFL_adapted/Meta-Llama-3-8B-Instruct-hf'
+tokenizer_path: None
 temperature: float = 0
 top_p: float = 1.0
 
@@ -19,7 +18,6 @@ max_gen_len: Optional[int] = None
 
 generator = Llama.build(
         ckpt_dir=ckpt_dir,
-        tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
         seed=seed, 
