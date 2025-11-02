@@ -1,5 +1,9 @@
 model_name = 'Llama3'
 ######################### START
+from pathlib import Path
+
+PKG_ROOT = Path(__file__).resolve().parents[1]
+DATA_ROOT = PKG_ROOT / "data"
 
 # 1. Build
 from typing import List, Optional
@@ -57,7 +61,9 @@ if __name__ == "__main__":
     stage = args.stage
     rank = args.rank
 
-    with open(f'../data/bug_list/{dataset}/bug_list.txt') as f:
+    bug_list_path = DATA_ROOT / "bug_list" / dataset / "bug_list.txt"
+
+    with open(bug_list_path, "r", encoding="utf-8") as f:
         bugs = [e.strip() for e in f.readlines()]
 
     if stage == 'SR':
