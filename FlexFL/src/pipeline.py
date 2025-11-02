@@ -4,6 +4,7 @@ from pathlib import Path
 
 PKG_ROOT = Path(__file__).resolve().parents[1]
 DATA_ROOT = PKG_ROOT / "data"
+RES_ROOT = PKG_ROOT / "res"   
 
 # 1. Build
 from typing import List, Optional
@@ -44,6 +45,7 @@ def query(instruction):
 
 import json
 import os
+import shutil
 from .function_call import (
     get_code_snippet, get_paths, get_classes, get_methods, find_class, find_method
 )
@@ -67,23 +69,27 @@ if __name__ == "__main__":
         bugs = [e.strip() for e in f.readlines()]
 
     if stage == 'SR':
-        output_dir = f"{model_name}_{dataset}_SR" + ("_br" if input_type == 'bug_report' else "") + ("_tt" if input_type == 'trigger_test' else "")
+        output_dir = f"{model_name}_{dataset}_SR" \
+                    + ("_br" if input_type == 'bug_report' else "") \
+                    + ("_tt" if input_type == 'trigger_test' else "")
     else:
         output_dir = f"{model_name}_{dataset}_{rank}"
-    os.system(f'rm -rf ../res/{output_dir}')
-    os.system(f'mkdir ../res/{output_dir}')
+
+    OUT_DIR = RES_ROOT / output_dir
+    # clean & create
+    if OUT_DIR.exists():
+        shutil.rmtree(OUT_DIR)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     
     for bug in bugs:
-        if bug != 'Time-25':
-            continue
         print(bug)
         max_try = 10
         while max_try > 0:
             try:
                 input_description = ""
-                if (input_type == 'All' or input_type =='bug_report') and os.path.exists(f'../data/input/bug_reports/{dataset}/{bug}.json'):
-                    input_type_a = "a bug report"
-                    with open(f'../data/input/bug_reports/{dataset}/{bug}.json') as f:
+                bug_report_path = DATA_ROOT / "input" / "bug_reports" / dataset / f"{bug}.json"
+                if input_type in ('All', 'bug_report') and bug_report_path.exists():
+                    with bug_report_path.open("r", encoding="utf-8") as f:
                         bug_report = json.load(f)
                         if dataset == 'Defects4J':
                             input_description += f"The bug report is as follows:\n```\nTitle:{bug_report['title']}\nDescription:{bug_report['description']}\n```\n"
@@ -91,15 +97,16 @@ if __name__ == "__main__":
                             input_description += f"The bug report is as follows:\n```\nTitle:{bug_report['title']}\nDescription:{bug_report['description_text']}\n```\n"
                 else:
                     input_type_a = None
-                if (input_type == 'All' or input_type =='trigger_test') and os.path.exists(f'../data/input/trigger_tests/{dataset}/{bug}.txt'):
+                trigger_test_path = DATA_ROOT / "input" / "trigger_tests" / dataset / f"{bug}.txt"
+                if (input_type == 'All' or input_type =='trigger_test') and trigger_test_path.exists():
                     if input_type_a:
                         input_type_a += ", a trigger test"
                     else:
                         input_type_a = "a trigger test"
-                    with open(f'../data/input/trigger_tests/{dataset}/{bug}.txt') as f:
+                    with trigger_test_path.open("r", encoding="utf-8") as f:
                         trigger_test = f.read()
                         input_description += f"The trigger test is as follows:\n```\n{trigger_test}\n```\n"
-                input_type_the = input_type_a.replace('a', 'the')
+                input_type_the = (input_type_a or "").replace('a', 'the') if input_type_a else "the input"
                 if stage == 'SR':
                     functions = "\nFunction calls you can use are as follows.\n\
 * find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n\
@@ -113,8 +120,9 @@ if __name__ == "__main__":
                     functions = "\nFunction calls you can use are as follows.\n\
 * get_code_snippet_of_method(`method_number`) -> Get the code snippet of the java method. `method_number` -> The number of the java methods suggested. *\n\
 * exit() -> Exit function calling to give your final answer when you are confident of the answer.  *\n"
-                    with open(f'../data/input/suspicious_methods/{dataset}/{model_name}_{rank}/{bug}.txt') as f:
-                        suspicious_methods = f.read().split('\n')
+                    sus_paths = DATA_ROOT / "input" / "suspicious_methods" / dataset / f"{model_name}_{rank}" / f"{bug}.txt"
+                    with sus_paths.open("r", encoding="utf-8") as f:
+                        suspicious_methods = f.read().splitlines()
                         suspicious_methods_content =  '\n'.join([f"{j}.{suspicious_methods[j-1]}" for j in range(1,len(suspicious_methods)+1)])
                         
                     input_description += f"The suggested methods are as follows:\n```\n{suspicious_methods_content}\n```\n"
@@ -199,8 +207,7 @@ Top_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n\
                         "role": "Assistant",
                         "content": content
                     })
-                with open(f'../res/{output_dir}/{bug}.json', 'w') as f:
-                    json.dump(instruction, f, indent=4)
+                (out_path := OUT_DIR / f"{bug}.json").write_text(json.dumps(instruction, indent=4), encoding="utf-8")
                 break
             except Exception as e:
                 print(e)
