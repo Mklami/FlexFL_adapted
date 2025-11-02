@@ -40,7 +40,9 @@ def query(instruction):
 
 import json
 import os
-from function_call import get_code_snippet, get_paths, get_classes, get_methods, find_class, find_method
+from .function_call import (
+    get_code_snippet, get_paths, get_classes, get_methods, find_class, find_method
+)
 import argparse
 
 if __name__ == "__main__":
