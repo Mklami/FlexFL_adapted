@@ -2,9 +2,10 @@ model_name = 'Llama3'
 ######################### START
 from pathlib import Path
 PKG_ROOT = Path(__file__).resolve().parents[1]     # .../FlexFL
+PROJECT_ROOT = PKG_ROOT.parent                     # .../FlexFL_adapted
 DATA_ROOT = PKG_ROOT / "data"
 RES_ROOT  = PKG_ROOT / "res"
-PREP_ROOT = PKG_ROOT / "prepare" / "buggy_program"
+PREP_ROOT = PROJECT_ROOT / "prepare" / "buggy_program"
 BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
 
 def _buggy_base(dataset: str) -> Path:

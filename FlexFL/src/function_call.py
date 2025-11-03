@@ -8,8 +8,9 @@ import Levenshtein
 
 # ---------- Path helpers (no circular import from pipeline) ----------
 PKG_ROOT = Path(__file__).resolve().parents[1]               # .../FlexFL
+PROJECT_ROOT = PKG_ROOT.parent                               # .../FlexFL_adapted
 DATA_ROOT = PKG_ROOT / "data"
-PREP_ROOT = PKG_ROOT / "prepare" / "buggy_program"
+PREP_ROOT = PROJECT_ROOT / "prepare" / "buggy_program"
 BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
 
 def _buggy_base(dataset: str, bug: str = None) -> Path:
