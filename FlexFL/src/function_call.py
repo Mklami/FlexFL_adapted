@@ -12,28 +12,44 @@ DATA_ROOT = PKG_ROOT / "data"
 PREP_ROOT = PKG_ROOT / "prepare" / "buggy_program"
 BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
 
-def _buggy_base(dataset: str) -> Path:
+def _buggy_base(dataset: str, bug: str = None) -> Path:
     """
+    Find the base directory containing buggy program files for the given dataset (and optionally bug).
+    Checks multiple locations and verifies files exist if bug is provided.
     Prefer data/input/buggy_program/<dataset>, else fallback to prepare/buggy_program/<dataset>
     or prepare/buggy_program/methods_buggy_<dataset>/.
     """
-    base = BUGGY_INPUT_ROOT / dataset
-    if base.exists():
-        return base
-    # Try prepare/buggy_program/<dataset>
-    fallback = PREP_ROOT / dataset
-    if fallback.exists():
-        return fallback
-    # Try prepare/buggy_program/methods_buggy_<dataset>/ (with case variations)
-    fallback2 = PREP_ROOT / f"methods_buggy_{dataset}"
-    if fallback2.exists():
-        return fallback2
-    # Try with lowercase 'j' variant for Defects4J -> Defects4j
+    # List of potential base directories to check (in priority order)
+    candidates = [
+        BUGGY_INPUT_ROOT / dataset,
+        PREP_ROOT / dataset,
+        PREP_ROOT / f"methods_buggy_{dataset}",
+    ]
+    
+    # Add case variant for Defects4J
     if dataset == "Defects4J":
-        fallback3 = PREP_ROOT / "methods_buggy_Defects4j"
-        if fallback3.exists():
-            return fallback3
-    return base  # returns non-existing path if none found (callers check)
+        candidates.append(PREP_ROOT / "methods_buggy_Defects4j")
+    
+    # If bug is provided, check if required files exist in each location
+    if bug:
+        required_file = f"{bug}.corpusMappingWithPackageSeparatorMethodLevelGranularity"
+        for candidate in candidates:
+            if candidate.exists():
+                if (candidate / required_file).exists():
+                    return candidate
+    else:
+        # If no bug specified, return first existing directory
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+    
+    # If bug was specified but not found, try again without bug check for directory structure
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    
+    # Return the primary location even if it doesn't exist (callers will handle the error)
+    return BUGGY_INPUT_ROOT / dataset
 
 def _require_exists(p: Path, what: str):
     if not p.exists():
@@ -96,7 +112,7 @@ def _raw_path(base: Path, bug: str) -> Path:
 
 def get_code_snippet(bug: str, function: str, dataset: str) -> str:
     function = function.replace(', ',',').replace(' ,',',')
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
 
     mapping = _mapping_path(base, bug)
     raw     = _raw_path(base, bug)
@@ -127,7 +143,7 @@ def get_code_snippet(bug: str, function: str, dataset: str) -> str:
         return "You provide a wrong method name. Please try the following method names.\n" + '\n'.join(results)
 
 def get_paths(bug: str, dataset: str) -> str:
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
     mapping = _mapping_path(base, bug)
     lines = _read_lines(mapping)
     # prefix before first '$' is a path
@@ -135,7 +151,7 @@ def get_paths(bug: str, dataset: str) -> str:
     return '\n'.join(paths)
 
 def get_classes(bug: str, path_name: str, dataset: str) -> str:
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
     mapping = _mapping_path(base, bug)
     lines = _read_lines(mapping)
 
@@ -168,7 +184,7 @@ def get_classes(bug: str, path_name: str, dataset: str) -> str:
         return "You provide a wrong path name. You can call `get_paths` first to get a right path name."
 
 def get_methods(bug: str, class_name: str, dataset: str) -> str:
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
     mapping = _mapping_path(base, bug)
     lines = _read_lines(mapping)
 
@@ -202,7 +218,7 @@ def get_methods(bug: str, class_name: str, dataset: str) -> str:
         return "You provide a wrong class name. You can call `get_classes_of_path` first to get a right class name."
 
 def find_class(bug: str, class_name: str, dataset: str) -> str:
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
     mapping = _mapping_path(base, bug)
     lines = _read_lines(mapping)
 
@@ -224,7 +240,7 @@ def find_class(bug: str, class_name: str, dataset: str) -> str:
     return '\n'.join(sorted(find))
 
 def find_method(bug: str, method_name: str, dataset: str) -> str:
-    base = _buggy_base(dataset)
+    base = _buggy_base(dataset, bug)
     mapping = _mapping_path(base, bug)
     lines = _read_lines(mapping)
 
