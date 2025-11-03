@@ -4,6 +4,16 @@ from pathlib import Path
 PKG_ROOT = Path(__file__).resolve().parents[1]     # .../FlexFL
 DATA_ROOT = PKG_ROOT / "data"
 RES_ROOT  = PKG_ROOT / "res"
+PREP_ROOT = PKG_ROOT / "prepare" / "buggy_program"
+BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
+
+def _buggy_base(dataset: str) -> Path:
+    # Prefer data/input/buggy_program/<dataset>, else fallback to prepare/buggy_program/<dataset>
+    base = BUGGY_INPUT_ROOT / dataset
+    if not base.exists():
+        fallback = PREP_ROOT / dataset
+        return fallback if fallback.exists() else base
+    return base
 
 # 1. Build
 from typing import List, Optional
