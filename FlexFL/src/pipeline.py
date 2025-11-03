@@ -105,8 +105,8 @@ if __name__ == "__main__":
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     
     for bug in bugs:
-        if bug != 'Time-25':
-            continue
+        #if bug != 'Time-25':
+        #    continue
         print(bug)
         max_try = 10
         while max_try > 0:
