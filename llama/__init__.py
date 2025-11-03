@@ -31,23 +31,32 @@ class Llama:
         model.to(device)
         return cls(model, tok, device)
 
-    def chat_completion(self, dialogs: List[Dialog], max_gen_len: int = 512,
-                        temperature: float = 0.6, top_p: float = 0.9) -> List[Dict[str, Any]]:
+    def chat_completion(self, dialogs, max_gen_len=512, temperature=0.6, top_p=0.9):
         outs = []
         for d in dialogs:
-            msgs = [{"role": m.role, "content": m.content} for m in d.messages]
+            # Accept either Dialog(...) or list[{"role":..., "content":...}, ...]
+            if hasattr(d, "messages"):  # Dialog
+                msgs = [{"role": m.role, "content": m.content} for m in d.messages]
+            elif isinstance(d, list):   # already list of dicts
+                msgs = d
+            else:
+                raise TypeError(f"Unsupported dialog type: {type(d)}")
+
             prompt = self.tokenizer.apply_chat_template(
                 msgs, tokenize=False, add_generation_prompt=True
             )
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
             gen = self.model.generate(
-                **inputs, max_new_tokens=max_gen_len,
-                do_sample=(temperature and temperature > 0),
-                temperature=temperature, top_p=top_p,
+                **inputs,
+                max_new_tokens=max_gen_len,
+                do_sample=(temperature is not None and temperature > 0),
+                temperature=temperature if (temperature is not None) else 0.0,
+                top_p=top_p,
                 pad_token_id=self.tokenizer.eos_token_id
             )
             gen_ids = gen[0][inputs["input_ids"].shape[1]:]
             text = self.tokenizer.decode(gen_ids, skip_special_tokens=True)
             outs.append({"generation": {"role": "assistant", "content": text}})
         return outs
+
 
