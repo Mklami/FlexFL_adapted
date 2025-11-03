@@ -14,13 +14,26 @@ BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
 
 def _buggy_base(dataset: str) -> Path:
     """
-    Prefer data/input/buggy_program/<dataset>, else fallback to prepare/buggy_program/<dataset>.
+    Prefer data/input/buggy_program/<dataset>, else fallback to prepare/buggy_program/<dataset>
+    or prepare/buggy_program/methods_buggy_<dataset>/.
     """
     base = BUGGY_INPUT_ROOT / dataset
     if base.exists():
         return base
+    # Try prepare/buggy_program/<dataset>
     fallback = PREP_ROOT / dataset
-    return fallback if fallback.exists() else base  # returns non-existing path if neither exists (callers check)
+    if fallback.exists():
+        return fallback
+    # Try prepare/buggy_program/methods_buggy_<dataset>/ (with case variations)
+    fallback2 = PREP_ROOT / f"methods_buggy_{dataset}"
+    if fallback2.exists():
+        return fallback2
+    # Try with lowercase 'j' variant for Defects4J -> Defects4j
+    if dataset == "Defects4J":
+        fallback3 = PREP_ROOT / "methods_buggy_Defects4j"
+        if fallback3.exists():
+            return fallback3
+    return base  # returns non-existing path if none found (callers check)
 
 def _require_exists(p: Path, what: str):
     if not p.exists():

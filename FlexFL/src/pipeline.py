@@ -9,10 +9,23 @@ BUGGY_INPUT_ROOT = DATA_ROOT / "input" / "buggy_program"
 
 def _buggy_base(dataset: str) -> Path:
     # Prefer data/input/buggy_program/<dataset>, else fallback to prepare/buggy_program/<dataset>
+    # or prepare/buggy_program/methods_buggy_<dataset>/
     base = BUGGY_INPUT_ROOT / dataset
-    if not base.exists():
-        fallback = PREP_ROOT / dataset
-        return fallback if fallback.exists() else base
+    if base.exists():
+        return base
+    # Try prepare/buggy_program/<dataset>
+    fallback = PREP_ROOT / dataset
+    if fallback.exists():
+        return fallback
+    # Try prepare/buggy_program/methods_buggy_<dataset>/ (with case variations)
+    fallback2 = PREP_ROOT / f"methods_buggy_{dataset}"
+    if fallback2.exists():
+        return fallback2
+    # Try with lowercase 'j' variant for Defects4J -> Defects4j
+    if dataset == "Defects4J":
+        fallback3 = PREP_ROOT / "methods_buggy_Defects4j"
+        if fallback3.exists():
+            return fallback3
     return base
 
 # 1. Build
@@ -66,13 +79,17 @@ if __name__ == "__main__":
     parser.add_argument('--input', default='All', choices=['bug_report', 'trigger_test', 'All'])
     parser.add_argument('--stage', default='SR', choices=['SR', 'LR'])
     parser.add_argument('--rank', default='All')
+    parser.add_argument('--bug-list', default=None, help='Path to custom bug list file (default: data/bug_list/<dataset>/bug_list.txt)')
     args = parser.parse_args()
     dataset = args.dataset
     input_type = args.input
     stage = args.stage
     rank = args.rank
 
-    bug_list_path = DATA_ROOT / "bug_list" / dataset / "bug_list.txt"
+    if args.bug_list:
+        bug_list_path = Path(args.bug_list)
+    else:
+        bug_list_path = DATA_ROOT / "bug_list" / dataset / "bug_list.txt"
 
     with open(bug_list_path, "r", encoding="utf-8") as f:
         bugs = [e.strip() for e in f.readlines()]
