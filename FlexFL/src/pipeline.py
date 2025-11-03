@@ -1,10 +1,9 @@
 model_name = 'Llama3'
 ######################### START
 from pathlib import Path
-
-PKG_ROOT = Path(__file__).resolve().parents[1]
+PKG_ROOT = Path(__file__).resolve().parents[1]     # .../FlexFL
 DATA_ROOT = PKG_ROOT / "data"
-RES_ROOT = PKG_ROOT / "res"   
+RES_ROOT  = PKG_ROOT / "res"
 
 # 1. Build
 from typing import List, Optional
@@ -68,17 +67,14 @@ if __name__ == "__main__":
     with open(bug_list_path, "r", encoding="utf-8") as f:
         bugs = [e.strip() for e in f.readlines()]
 
-    if stage == 'SR':
+    if stage == "SR":
         output_dir = f"{model_name}_{dataset}_SR" \
-                    + ("_br" if input_type == 'bug_report' else "") \
-                    + ("_tt" if input_type == 'trigger_test' else "")
+                    + ("_br" if input_type == "bug_report" else "") \
+                    + ("_tt" if input_type == "trigger_test" else "")
     else:
         output_dir = f"{model_name}_{dataset}_{rank}"
 
-    OUT_DIR = RES_ROOT / output_dir
-    # clean & create
-    if OUT_DIR.exists():
-        shutil.rmtree(OUT_DIR)
+    OUT_DIR = (RES_ROOT / output_dir)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     
     for bug in bugs:
@@ -89,26 +85,26 @@ if __name__ == "__main__":
         while max_try > 0:
             try:
                 input_description = ""
+                input_type_a = None
                 bug_report_path = DATA_ROOT / "input" / "bug_reports" / dataset / f"{bug}.json"
-                if input_type in ('All', 'bug_report') and bug_report_path.exists():
+                if input_type in ("All", "bug_report") and bug_report_path.exists():
+                    input_type_a = "a bug report"
                     with bug_report_path.open("r", encoding="utf-8") as f:
                         bug_report = json.load(f)
-                        if dataset == 'Defects4J':
-                            input_description += f"The bug report is as follows:\n```\nTitle:{bug_report['title']}\nDescription:{bug_report['description']}\n```\n"
-                        else:
-                            input_description += f"The bug report is as follows:\n```\nTitle:{bug_report['title']}\nDescription:{bug_report['description_text']}\n```\n"
-                else:
-                    input_type_a = None
+                    title = (bug_report.get("title") or "").replace("\n", " ").strip()
+                    desc  = (bug_report.get("description") or bug_report.get("description_text") or "").replace("\n", " ").strip()
+                    input_description += (
+                        "The bug report is as follows:\n```\n"
+                        f"Title:{title}\nDescription:{desc}\n```\n"
+                    )
+
                 trigger_test_path = DATA_ROOT / "input" / "trigger_tests" / dataset / f"{bug}.txt"
-                if (input_type == 'All' or input_type =='trigger_test') and trigger_test_path.exists():
-                    if input_type_a:
-                        input_type_a += ", a trigger test"
-                    else:
-                        input_type_a = "a trigger test"
-                    with trigger_test_path.open("r", encoding="utf-8") as f:
-                        trigger_test = f.read()
-                        input_description += f"The trigger test is as follows:\n```\n{trigger_test}\n```\n"
-                input_type_the = (input_type_a or "").replace('a', 'the') if input_type_a else "the input"
+                if input_type in ("All", "trigger_test") and trigger_test_path.exists():
+                    input_type_a = ("a bug report, a trigger test" if input_type_a else "a trigger test")
+                    trigger_test = trigger_test_path.read_text(encoding="utf-8")
+                    input_description += f"The trigger test is as follows:\n```\n{trigger_test}\n```\n"
+                #input_type_the = (input_type_a or "").replace('a', 'the') if input_type_a else "the input"
+                input_type_the = (input_type_a or "the input")
                 if stage == 'SR':
                     functions = "\nFunction calls you can use are as follows.\n\
 * find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n\
@@ -209,6 +205,7 @@ Top_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n\
                         "role": "Assistant",
                         "content": content
                     })
+                # final write
                 (out_path := OUT_DIR / f"{bug}.json").write_text(json.dumps(instruction, indent=4), encoding="utf-8")
                 break
             except Exception as e:
