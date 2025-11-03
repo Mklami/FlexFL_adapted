@@ -93,7 +93,7 @@ if __name__ == "__main__":
         bug_list_path = DATA_ROOT / "bug_list" / dataset / "bug_list.txt"
 
     with open(bug_list_path, "r", encoding="utf-8") as f:
-        bugs = [e.strip() for e in f.readlines()]
+        bugs = [e.strip() for e in f.readlines() if e.strip()]
 
     if stage == "SR":
         output_dir = f"{model_name}_{dataset}_SR" \
