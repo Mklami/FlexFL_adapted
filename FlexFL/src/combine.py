@@ -46,6 +46,8 @@ if __name__ == "__main__":
     parser.add_argument('--dataset', default='Defects4J')
     parser.add_argument('--model', default='Llama3')
     parser.add_argument('--rank', default='All')
+    parser.add_argument('--bug-list', default=None,
+                        help='Optional path to a custom bug list (default: data/bug_list/<dataset>/bug_list.txt)')
     args = parser.parse_args()
 
     dataset = args.dataset
@@ -62,7 +64,10 @@ if __name__ == "__main__":
 
     _ensure_clean_dir(output_dir)
 
-    bug_list_path = data_root / "bug_list" / dataset / "bug_list.txt"
+    if args.bug_list:
+        bug_list_path = Path(args.bug_list)
+    else:
+        bug_list_path = data_root / "bug_list" / dataset / "bug_list.txt"
     with bug_list_path.open("r", encoding="utf-8") as f:
         bugs = [e.strip() for e in f.readlines() if e.strip()]
 
