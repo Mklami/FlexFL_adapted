@@ -54,11 +54,16 @@ if __name__ == "__main__":
     model = args.model
     rank = args.rank
 
+    # Extract base model name (without suffixes like _br, _tt) for output directory
+    # This matches what pipeline.py expects (it uses hardcoded model_name = 'Llama3')
+    base_model = model.split('_')[0] if '_' in model else model
+
     SRC_ROOT = Path(__file__).resolve().parent
     PROJ_ROOT = SRC_ROOT.parent
     data_root = PROJ_ROOT / "data"
     res_root = PROJ_ROOT / "res"
-    output_dir = data_root / "input" / "suspicious_methods" / dataset / f"{model}_{rank}"
+    # Use base_model for output directory to match pipeline.py expectations
+    output_dir = data_root / "input" / "suspicious_methods" / dataset / f"{base_model}_{rank}"
 
     sr_dir = _find_sr_dir(res_root, dataset, model)
 
