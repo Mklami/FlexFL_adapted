@@ -108,6 +108,10 @@ if __name__ == "__main__":
     for bug in bugs:
         #if bug != 'Time-25':
         #    continue
+        out_path = OUT_DIR / f"{bug}.json"
+        if out_path.exists():
+            print(f"Skipping {bug} (already processed)")
+            continue
         print(bug)
         max_try = 10
         while max_try > 0:
