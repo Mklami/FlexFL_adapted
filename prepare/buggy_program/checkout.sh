@@ -2,7 +2,7 @@ CURRENT_PATH=$(readlink -f "$0")
 CURRENT_DIR=$(dirname "$CURRENT_PATH")
 
 TOOL_DIR=$(cd $CURRENT_DIR; cd ..; cd ..; pwd)/tools
-export D4J_HOME=$TOOL_DIR/defects4j-2.0.0
+export D4J_HOME=$TOOL_DIR/defects4j
 REPO_DIR=$CURRENT_DIR/Collect_Methods/repos
 
 cat "./bug_list.txt" | while read bug
