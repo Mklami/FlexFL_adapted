@@ -11,8 +11,20 @@ do
     bugid=${bug#*-}
     checkout_dir=$REPO_DIR/${project}-${bugid}
     echo $project-$bugid
-    rm -rf "${checkout_dir}_buggy"; mkdir -p "${checkout_dir}_buggy"
-    "$D4J_HOME/framework/bin/defects4j" checkout -p "$project" -v "${bugid}b" -w "${checkout_dir}_buggy"
-    rm -rf "${checkout_dir}_fixed"; mkdir -p "${checkout_dir}_fixed"
-    "$D4J_HOME/framework/bin/defects4j" checkout -p "$project" -v "${bugid}f" -w "${checkout_dir}_fixed"
+    
+    # Skip if buggy version already exists
+    if [ -d "${checkout_dir}_buggy" ]; then
+        echo "  Skipping buggy checkout (already exists)"
+    else
+        rm -rf "${checkout_dir}_buggy"; mkdir -p "${checkout_dir}_buggy"
+        "$D4J_HOME/framework/bin/defects4j" checkout -p "$project" -v "${bugid}b" -w "${checkout_dir}_buggy"
+    fi
+    
+    # Skip if fixed version already exists
+    if [ -d "${checkout_dir}_fixed" ]; then
+        echo "  Skipping fixed checkout (already exists)"
+    else
+        rm -rf "${checkout_dir}_fixed"; mkdir -p "${checkout_dir}_fixed"
+        "$D4J_HOME/framework/bin/defects4j" checkout -p "$project" -v "${bugid}f" -w "${checkout_dir}_fixed"
+    fi
 done
