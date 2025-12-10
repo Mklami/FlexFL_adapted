@@ -1,8 +1,12 @@
 model_name = 'Llama3'
 ######################### START
 from pathlib import Path
+import sys
 PKG_ROOT = Path(__file__).resolve().parents[1]     # .../FlexFL
 PROJECT_ROOT = PKG_ROOT.parent                     # .../FlexFL_adapted
+# Add project root to path for llama import
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 DATA_ROOT = PKG_ROOT / "data"
 RES_ROOT  = PKG_ROOT / "res"
 PREP_ROOT = PROJECT_ROOT / "prepare" / "buggy_program"
@@ -69,7 +73,10 @@ def query(instruction):
 import json
 import os
 import shutil
-from .function_call import (
+import sys
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+from function_call import (
     get_code_snippet, get_paths, get_classes, get_methods, find_class, find_method
 )
 import argparse
