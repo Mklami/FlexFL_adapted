@@ -51,7 +51,7 @@ if __name__ == "__main__":
                     suspicious_methods.append(method_name)
             suspicious_methods = suspicious_methods[:5*3]
 
-        with open(f'../res/{model}_{dataset}_SR/{bug}.json') as f:
+        with open(f'../res/{model}_{dataset}_SR_br/{bug}.json') as f:
                 res = json.load(f)
                 res = res[-1]['content']
                 for line in res.split('\n'):
