@@ -1,0 +1,90 @@
+[
+    {
+        "role": "system",
+        "content": "You are a debugging assistant of our Java software. You will be presented with a bug report and tools (functions) to access the source code of the system under test (SUT). Your task is to locate the top-5 most likely culprit methods based on a bug report and the information you retrieve using given functions. \nFunction calls you can use are as follows.\n* get_code_snippet_of_method(`method_number`) -> Get the code snippet of the java method. `method_number` -> The number of the java methods suggested. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer.  *\nYou have 10 chances to call function."
+    },
+    {
+        "role": "user",
+        "content": "The bug report is as follows:\n```\nTitle:Allow convenient spying on abstract classes\nDescription:I posted this in GoogleCode and was asked to submit in github. Mockito is easy to use when the test needs to provide canned values for a certain method. But it gets harder when a canned value isn't sufficient. Example 1: Fake with trivial Logic interface UserAccount {   List<String> getEmails();   void addEmail(String email);   // 12 other methods ... }  When mocking such domain entity object, it's tedious to manually program getEmails()/addEmail() with when().thenReturn() and to make sure the two methods are logically consistent, that is, getEmails() returns all emails added. Example 2: callback-style API interface AccountService {   void getAccount(String id, AsyncCallback<UserAccount> callback); }  Stubbing AccountService isn't easy. It'd require use of Answer, and the Answer API isn't statically type safe: when(service.getAccount(eq(id), any(AsyncCallback.class)).thenAnswer(new Answer<Void>() {   AsyncCallback<UserAccount> callback = (AsyncCallback<UserAccount>) getArguments()[1];   ... });  Example 3: Uninteresting parameters interface AccountRpcService {   FutureAccount getAccount(RpcContext context, String id); }  None of the tests care about the context object. It's an uninteresting parameter imposed by the framework. If AccountRpcService were directly mocked, all tests would have to use isA() to repetitively mention this uninteresting parameter, like this: when(service.getAccount(isA(RpcContext.class), eq(\"id\")).thenReturn(...); And all other parameters are required to be wrapped in eq(). Proposal I propose adding support for abstract classes to mockito to make it easier to deal with tests like above: For example 1 abstract class FakeUserAccount implements UserAccount {   private final List<String> emails = new ArrayList<>();    @Override public void addEmail(String email) {     emails.add(email);   }   @Override List<String> getEmails() {     return ImmutableList.copyOf(emails);   } }  @Fake private FakeUserAccount userAccount; // Mockito instantiates abstract class.  For example 2 abstract class MockAccountService implements AccountService {   @Override public void getAccount(String id, AsyncCallback<UserAccount> callback) {     callback.onSuccess(getAccount(id));   }   abstract UserAccount getAccount(String id); }  @Fake private MockAccountService service;  ...  when(service.getAccount(\"id\")).thenReturn(account);  For example 3 abstract class MockAccountRpcService implements AccountRpcService {   @Override Future<Account> getAccount(RpcContext context, String id) {     checkNotNull(context);  // Common sanity test. Don't have to repeat it in tests.     return getAccount(id);   }    abstract Future<Account> getAccount(String id); }  @Fake private MockAccountRpcService service;  when(service.getAccount(\"id\")).thenReturn(...);  My work place internally implemented a default Answer to support abstract classes. We found that the support of abstract classes helps us to avoid overusing mocks when we should be using fakes. And in situations like above we get cleaner test code. But because it's not integrated in the core Mockito, there are gotchas with our implementation (like, you can't have private/final methods in your fake). If the idea sounds okay to give a try, I'll volunteer to submit a patch. Thanks!\n```\nThe suggested methods are as follows:\n```\n1.org.mockito.Mockito.spy(Class<T>)\n2.org.mockito.internal.creation.MockSettingsImpl.outerInstance(Object)\n3.org.mockito.internal.creation.MockSettingsImpl.useConstructor()\n4.org.mockito.internal.configuration.SpyAnnotationEngine.newSpyInstance(Object,Field)\n5.org.mockito.Mockito.doCallRealMethod()\n6.org.mockito.internal.creation.MockSettingsImpl.outerInstance(Object)\n7.org.mockito.internal.creation.MockSettingsImpl.useConstructor()\n8.org.mockito.Mockito.spy(Class<T>)\n9.org.mockito.internal.stubbing.answers.CallsRealMethods.answer(InvocationOnMock)\n10.org.mockito.internal.creation.bytebuddy.InterceptedInvocation.callRealMethod()\n11.org.mockito.Mockito.ignoreStubs(Object)\n12.org.mockito.AdditionalAnswers.delegatesTo(Object)\n13.org.mockito.Mockito.reset(T)\n14.org.mockito.internal.configuration.plugins.PluginLoader.loadImpl(Class<T>)\n15.org.mockito.Mockito.validateMockitoUsage()\n16.org.mockito.Matchers.eq(int)\n17.org.mockito.Matchers.any()\n18.org.mockito.Matchers.eq(int)\n19.org.mockito.Matchers.eq(int)\n20.org.mockito.Matchers.any()\n```\nLet's locate the faulty method step by step using reasoning and function calls. Now reason and plan how to locate the buggy methods."
+    },
+    {
+        "role": "Assistant",
+        "content": "Based on the bug report, it seems that the issue is related to the difficulty in mocking abstract classes and interfaces in Mockito. The user is proposing a solution to add support for abstract classes to Mockito to make it easier to deal with tests.\n\nGiven the bug report and the suggested methods, I plan to start by analyzing the methods that are related to mocking and stubbing. I will start by calling `get_code_snippet_of_method(1)` to get the code snippet of the `org.mockito.Mockito.spy(Class<T>)` method.\n\nThis method is used to create a spy object that is a proxy for the real object. It seems like a good starting point to investigate the issue.\n\nNext, I will call `get_code_snippet_of_method(2)` to get the code snippet of the `org.mockito.internal.creation.MockSettingsImpl.outerInstance(Object)` method. This method is used to create a mock object. I will analyze the code snippet to see if it has any relation to the issue.\n\nIf the above methods do not seem to be related to the issue, I will continue to analyze the other methods that are related to mocking and stubbing, such as `org.mockito.Mockito.doCallRealMethod()`, `org.mockito.internal.stubbing.answers.CallsRealMethods.answer(InvocationOnMock)`, and `org.mockito.Mockito.reset(T)`.\n\nI will use my 10 chances to call the `get_code_snippet_of_method` function to analyze the code snippets and identify the top-5 most likely culprit methods.\n\nPlease let me know when to proceed with the next step."
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(1)"
+    },
+    {
+        "role": "user",
+        "content": "The code snippet of org.mockito.Mockito.spy(Class<T>) is as follows.\n/**\t     * Please refer to the documentation of {@link #spy(Object)}.\t     * Overusing spies hints at code design smells.\t     * <p>\t     * This method, in contrast to the original {@link #spy(Object)}, creates a spy based on class instead of an object.\t     * Sometimes it is more convenient to create spy based on the class and avoid providing an instance of a spied object.\t     * This is particularly useful for spying on abstract classes because they cannot be instantiated.\t     * See also {@link MockSettings#useConstructor()}.\t     * <p>\t     * Examples:\t     * <pre class=\"code\"><code class=\"java\">\t     *   SomeAbstract spy = spy(SomeAbstract.class);\t     *\t     *   //Robust API, via settings builder:\t     *   OtherAbstract spy = mock(OtherAbstract.class, withSettings()\t     *      .useConstructor().defaultAnswer(CALLS_REAL_METHODS));\t     *\t     *   //Mocking a non-static inner abstract class:\t     *   InnerAbstract spy = mock(InnerAbstract.class, withSettings()\t     *      .useConstructor().outerInstance(outerInstance).defaultAnswer(CALLS_REAL_METHODS));\t     * </code></pre>\t     *\t     * @param classToSpy the class to spy\t     * @param <T> type of the spy\t     * @return a spy of the provided class\t     * @since 1.10.12\t     */\t    @Incubating\t    public static <T> T spy(Class<T> classToSpy) {\t        return MOCKITO_CORE.mock(classToSpy, withSettings()\t                .useConstructor()\t                .defaultAnswer(CALLS_REAL_METHODS));\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(2)"
+    },
+    {
+        "role": "user",
+        "content": "The code snippet of org.mockito.internal.creation.MockSettingsImpl.outerInstance(Object) is as follows.\npublic MockSettings outerInstance(Object outerClassInstance) {\t        this.outerClassInstance = outerClassInstance;\t        return this;\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(3)"
+    },
+    {
+        "role": "user",
+        "content": "The code snippet of org.mockito.internal.creation.MockSettingsImpl.useConstructor() is as follows.\npublic MockSettings useConstructor() {\t        this.useConstructor = true;\t        return this;\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(4)"
+    },
+    {
+        "role": "user",
+        "content": "The code snippet of org.mockito.internal.configuration.SpyAnnotationEngine.newSpyInstance(Object,Field) is as follows.\nprivate static Object newSpyInstance(Object testInstance, Field field)\t            throws InstantiationException, IllegalAccessException, InvocationTargetException {\t        MockSettings settings = withSettings()\t                .defaultAnswer(Mockito.CALLS_REAL_METHODS)\t                .name(field.getName());\t        Class<?> type = field.getType();\t        if (type.isInterface()) {\t            return Mockito.mock(type, settings.useConstructor());\t        }\t        if (!Modifier.isStatic(type.getModifiers())) {\t            Class<?> enclosing = type.getEnclosingClass();\t            if (enclosing != null) {\t                if (!enclosing.isInstance(testInstance)) {\t                    throw new MockitoException(\"@Spy annotation can only initialize inner classes declared in the test. \"\t                            + \"Inner class: '\" + type.getSimpleName() + \"', \"\t                            + \"outer class: '\" + enclosing.getSimpleName() + \"'.\");\t                }\t                return Mockito.mock(type, settings\t                        .useConstructor()\t                        .outerInstance(testInstance));\t            }\t        }\t        Constructor<?> constructor;\t        try {\t            constructor = type.getDeclaredConstructor();\t        } catch (NoSuchMethodException e) {\t            throw new MockitoException(\"Please ensure that the type '\" + type.getSimpleName() + \"' has 0-arg constructor.\");\t        }\t\t        if (Modifier.isPrivate(constructor.getModifiers())) {\t            constructor.setAccessible(true);\t            return Mockito.mock(type, settings\t                    .spiedInstance(constructor.newInstance()));\t        } else {\t            return Mockito.mock(type, settings.useConstructor());\t        }\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(5)"
+    },
+    {
+        "role": "user",
+        "content": "The code snippet of org.mockito.Mockito.doCallRealMethod() is as follows.\n/**\t     * Use <code>doCallRealMethod()</code> when you want to call the real implementation of a method.\t     * <p>\t     * As usual you are going to read <b>the partial mock warning</b>:\t     * Object oriented programming is more less tackling complexity by dividing the complexity into separate, specific, SRPy objects.\t     * How does partial mock fit into this paradigm? Well, it just doesn't...\t     * Partial mock usually means that the complexity has been moved to a different method on the same object.\t     * In most cases, this is not the way you want to design your application.\t     * <p>\t     * However, there are rare cases when partial mocks come handy:\t     * dealing with code you cannot change easily (3rd party interfaces, interim refactoring of legacy code etc.)\t     * However, I wouldn't use partial mocks for new, test-driven & well-designed code.\t     * <p>\t     * See also javadoc {@link Mockito#spy(Object)} to find out more about partial mocks.\t     * <b>Mockito.spy() is a recommended way of creating partial mocks.</b>\t     * The reason is it guarantees real methods are called against correctly constructed object because you're responsible for constructing the object passed to spy() method.\t     * <p>\t     * Example:\t     * <pre class=\"code\"><code class=\"java\">\t     *   Foo mock = mock(Foo.class);\t     *   doCallRealMethod().when(mock).someVoidMethod();\t     *\t     *   // this will call the real implementation of Foo.someVoidMethod()\t     *   mock.someVoidMethod();\t     * </code></pre>\t     * <p>\t     * See examples in javadoc for {@link Mockito} class\t     *\t     * @return stubber - to select a method for stubbing\t     * @since 1.9.5\t     */\t    public static Stubber doCallRealMethod() {\t        return MOCKITO_CORE.doAnswer(new CallsRealMethods());\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "exit()"
+    },
+    {
+        "role": "user",
+        "content": "Based on the available information, provide complete name of the top-5 most likely culprit methods for the bug please. Since your answer will be processed automatically, please give your answer in the format as follows.\nTop_1 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_2 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_3 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_4 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n"
+    },
+    {
+        "role": "Assistant",
+        "content": "Top_1 : org.mockito.Mockito.spy(Class<T>)\nTop_2 : org.mockito.internal.creation.MockSettingsImpl.outerInstance(Object)\nTop_3 : org.mockito.internal.creation.MockSettingsImpl.useConstructor()\nTop_4 : org.mockito.internal.configuration.SpyAnnotationEngine.newSpyInstance(Object,Field)\nTop_5 : org.mockito.Mockito.doCallRealMethod()"
+    }
+]

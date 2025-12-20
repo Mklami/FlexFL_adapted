@@ -1,0 +1,1143 @@
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/DataUtil.java
+org.jsoup.DataUtil.load	2	File	String	
+/**	     * Loads a file to a String.	     * @param in	     * @param charsetName	     * @return	     * @throws IOException	     */	    static String load(File in, String charsetName) throws IOException {        	        InputStream inStream = new FileInputStream(in);	        String data = readInputStream(inStream, charsetName);	        inStream.close();	        return data;	    }	
+
+org.jsoup.DataUtil.load	2	URL	int	
+/**	     Fetches a URL and gets as a string.	     @param url	     @param timeoutMillis	     @return	     @throws IOException	     */	    static String load(URL url, int timeoutMillis) throws IOException {	        String protocol = url.getProtocol();	        Validate.isTrue(protocol.equals("http") || protocol.equals("https"), "Only http & https protocols supported");		        HttpURLConnection conn = (HttpURLConnection) url.openConnection();	        conn.setInstanceFollowRedirects(true);	        conn.setConnectTimeout(timeoutMillis);	        conn.setReadTimeout(timeoutMillis);	        conn.connect();		        int res = conn.getResponseCode();	        if (res != HttpURLConnection.HTTP_OK)	            throw new IOException(res + " error loading URL " + url.toString());	        	        String contentType = conn.getContentType();	        if (contentType == null || !contentType.startsWith("text/"))	            throw new IOException(String.format("Unhandled content type \"%s\" on URL %s. Must be text/*", 	                    contentType, url.toString()));	        	        InputStream inStream = new BufferedInputStream(conn.getInputStream());	        String charSet = "UTF-8"; // todo[must]: get from content-encoding, or http-equiv (two-pass?)		        String data = readInputStream(inStream, charSet);	        inStream.close();	        return data;	    }	
+
+org.jsoup.DataUtil.readInputStream	2	InputStream	String	
+private static String readInputStream(InputStream inStream, String charsetName) throws IOException {	        char[] buffer = new char[0x20000]; // ~ 130K	        StringBuilder data = new StringBuilder(0x20000);	        Reader inReader = new InputStreamReader(inStream, charsetName);	        int read;	        do {	            read = inReader.read(buffer, 0, buffer.length);	            if (read > 0) {	                data.append(buffer, 0, read);	            }		        } while (read >= 0);		        return data.toString();	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/Jsoup.java
+org.jsoup.Jsoup.Jsoup	0	
+private Jsoup() {}	
+
+org.jsoup.Jsoup.parse	2	String	String	
+/**	     Parse HTML into a Document. The parser will make a sensible, balanced document tree out of any HTML.		     @param html    HTML to parse	     @param baseUri The URL where the HTML was retrieved from. Used to resolve relative URLs to absolute URLs, that occur	     before the HTML declares a {@code <base href>} tag.	     @return sane HTML	     */	    public static Document parse(String html, String baseUri) {	        return Parser.parse(html, baseUri);	    }	
+
+org.jsoup.Jsoup.parse	1	String	
+/**	     Parse HTML into a Document. As no base URI is specified, absolute URL detection relies on the HTML including a	     {@code <base href>} tag.		     @param html HTML to parse	     @return sane HTML		     @see #parse(String, String)	     */	    public static Document parse(String html) {	        return Parser.parse(html, "");	    }	
+
+org.jsoup.Jsoup.parse	2	URL	int	
+/**	     Fetch a URL, and parse it as HTML.		     @param url           URL to fetch (with a GET). The protocol must be {@code http} or {@code https}.	     @param timeoutMillis Connection and read timeout, in milliseconds. If exceeded, IOException is thrown.	     @return The parsed HTML.		     @throws IOException If the final server response != 200 OK (redirects are followed), or if there's an error reading	     the response stream.	     */	    public static Document parse(URL url, int timeoutMillis) throws IOException {	        String html = DataUtil.load(url, timeoutMillis);	        return parse(html, url.toExternalForm());	    }	
+
+org.jsoup.Jsoup.parse	3	File	String	String	
+/**	     Parse the contents of a file as HTML.		     @param in          file to load HTML from	     @param charsetName character set of file contents. If you don't know the charset, generally the best guess is {@code UTF-8}.	     @param baseUri     The URL where the HTML was retrieved from, to generate absolute URLs relative to.	     @return sane HTML		     @throws IOException if the file could not be found, or read, or if the charsetName is invalid.	     */	    public static Document parse(File in, String charsetName, String baseUri) throws IOException {	        String html = DataUtil.load(in, charsetName);	        return parse(html, baseUri);	    }	
+
+org.jsoup.Jsoup.parse	2	File	String	
+/**	     Parse the contents of a file as HTML. The location of the file is used as the base URI to qualify relative URLs.		     @param in          file to load HTML from	     @param charsetName character set of file contents. If you don't know the charset, generally the best guess is {@code UTF-8}.	     @return sane HTML		     @throws IOException if the file could not be found, or read, or if the charsetName is invalid.	     @see #parse(File, String, String)	     */	    public static Document parse(File in, String charsetName) throws IOException {	        String html = DataUtil.load(in, charsetName);	        return parse(html, in.getAbsolutePath());	    }	
+
+org.jsoup.Jsoup.parseBodyFragment	2	String	String	
+/**	     Parse a fragment of HTML, with the assumption that it forms the {@code body} of the HTML.		     @param bodyHtml body HTML fragment	     @param baseUri  URL to resolve relative URLs against.	     @return sane HTML document		     @see Document#body()	     */	    public static Document parseBodyFragment(String bodyHtml, String baseUri) {	        return Parser.parseBodyFragment(bodyHtml, baseUri);	    }	
+
+org.jsoup.Jsoup.parseBodyFragment	1	String	
+/**	     Parse a fragment of HTML, with the assumption that it forms the {@code body} of the HTML.		     @param bodyHtml body HTML fragment	     @return sane HTML document		     @see Document#body()	     */	    public static Document parseBodyFragment(String bodyHtml) {	        return Parser.parseBodyFragment(bodyHtml, "");	    }	
+
+org.jsoup.Jsoup.clean	3	String	String	Whitelist	
+/**	     Get safe HTML from untrusted input HTML, by parsing input HTML and filtering it through a white-list of permitted	     tags and attributes.		     @param bodyHtml  input untrusted HMTL	     @param baseUri   URL to resolve relative URLs against	     @param whitelist white-list of permitted HTML elements	     @return safe HTML		     @see Cleaner#clean(Document)	     */	    public static String clean(String bodyHtml, String baseUri, Whitelist whitelist) {	        Document dirty = parseBodyFragment(bodyHtml, baseUri);	        Cleaner cleaner = new Cleaner(whitelist);	        Document clean = cleaner.clean(dirty);	        return clean.body().html();	    }	
+
+org.jsoup.Jsoup.clean	2	String	Whitelist	
+/**	     Get safe HTML from untrusted input HTML, by parsing input HTML and filtering it through a white-list of permitted	     tags and attributes.		     @param bodyHtml  input untrusted HTML	     @param whitelist white-list of permitted HTML elements	     @return safe HTML		     @see Cleaner#clean(Document)	     */	    public static String clean(String bodyHtml, Whitelist whitelist) {	        return clean(bodyHtml, "", whitelist);	    }	
+
+org.jsoup.Jsoup.isValid	2	String	Whitelist	
+/**	     Test if the input HTML has only tags and attributes allowed by the Whitelist. Useful for form validation. The input HTML should	     still be run through the cleaner to set up enforced attributes, and to tidy the output.	     @param bodyHtml HTML to test	     @param whitelist whitelist to test against	     @return true if no tags or attributes were removed; false otherwise	     @see #clean(String, org.jsoup.safety.Whitelist) 	     */	    public static boolean isValid(String bodyHtml, Whitelist whitelist) {	        Document dirty = parseBodyFragment(bodyHtml, "");	        Cleaner cleaner = new Cleaner(whitelist);	        return cleaner.isValid(dirty);	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/examples/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/examples/ListLinks.java
+org.jsoup.examples.ListLinks.main	1	String[]	
+public static void main(String[] args) throws IOException {	        Validate.isTrue(args.length == 1, "usage: supply url to fetch");	        URL url = new URL(args[0]);	        print("Fetching %s...", url.toExternalForm());		        Document doc = Jsoup.parse(url, 3*1000);	        Elements links = doc.select("a[href]");	        Elements media = doc.select("[src]");	        Elements imports = doc.select("link[href]");		        print("\nMedia: (%d)", media.size());	        for (Element src : media) {	            if (src.tagName().equals("img"))	                print(" * %s: <%s> %sx%s (%s)",	                        src.tagName(), src.attr("abs:src"), src.attr("width"), src.attr("height"),	                        trim(src.attr("alt"), 20));	            else	                print(" * %s: <%s>", src.tagName(), src.attr("abs:src"));	        }		        print("\nImports: (%d)", imports.size());	        for (Element link : imports) {	            print(" * %s <%s> (%s)", link.tagName(),link.attr("abs:href"), link.attr("rel"));	        }		        print("\nLinks: (%d)", links.size());	        for (Element link : links) {	            print(" * a: <%s>  (%s)", link.attr("abs:href"), trim(link.text(), 35));	        }	    }	
+
+org.jsoup.examples.ListLinks.print	2	String	Object	
+private static void print(String msg, Object... args) {	        System.out.println(String.format(msg, args));	    }	
+
+org.jsoup.examples.ListLinks.trim	2	String	int	
+private static String trim(String s, int width) {	        if (s.length() > width)	            return s.substring(0, width-1) + ".";	        else	            return s;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/safety/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/safety/Whitelist.java
+org.jsoup.safety.Whitelist.none	0	
+/**	     This whitelist allows only text nodes: all HTML will be stripped.		     @return whitelist	     */	    public static Whitelist none() {	        return new Whitelist();	    }	
+
+org.jsoup.safety.Whitelist.simpleText	0	
+/**	     This whitelist allows only simple text formatting: <code>b, em, i, strong, u</code>. All other HTML (tags and	     attributes) will be removed.		     @return whitelist	     */	    public static Whitelist simpleText() {	        return new Whitelist()	                .addTags("b", "em", "i", "strong", "u")	                ;	    }	
+
+org.jsoup.safety.Whitelist.basic	0	
+/**	     This whitelist allows a fuller range of text nodes: <code>a, b, blockquote, br, cite, code, dd, dl, dt, em, i, li,	     ol, p, pre, q, small, strike, strong, sub, sup, u, ul</code>, and appropriate attributes.	     <p/>	     Links (<code>a</code> elements) can point to <code>http, https, ftp, mailto</code>, and have an enforced	     <code>rel=nofollow</code> attribute.	     <p/>	     Does not allow images.		     @return whitelist	     */	    public static Whitelist basic() {	        return new Whitelist()	                .addTags(	                        "a", "b", "blockquote", "br", "cite", "code", "dd", "dl", "dt", "em",	                        "i", "li", "ol", "p", "pre", "q", "small", "strike", "strong", "sub",	                        "sup", "u", "ul")		                .addAttributes("a", "href")	                .addAttributes("blockquote", "cite")	                .addAttributes("q", "cite")		                .addProtocols("a", "href", "ftp", "http", "https", "mailto")	                .addProtocols("blockquote", "cite", "http", "https")	                .addProtocols("cite", "cite", "http", "https")		                .addEnforcedAttribute("a", "rel", "nofollow")	                ;		    }	
+
+org.jsoup.safety.Whitelist.basicWithImages	0	
+/**	     This whitelist allows the same text tags as {@link #basic}, and also allows <code>img</code> tags, with appropriate	     attributes, with <code>src</code> pointing to <code>http</code> or <code>https</code>.		     @return whitelist	     */	    public static Whitelist basicWithImages() {	        return basic()	                .addTags("img")	                .addAttributes("img", "align", "alt", "height", "src", "title", "width")	                .addProtocols("img", "src", "http", "https")	                ;	    }	
+
+org.jsoup.safety.Whitelist.relaxed	0	
+/**	     This whitelist allows a full range of text and structural body HTML: <code>a, b, blockquote, br, caption, cite,	     code, col, colgroup, dd, dl, dt, em, h1, h2, h3, h4, h5, h6, i, img, li, ol, p, pre, q, small, strike, strong, sub,	     sup, table, tbody, td, tfoot, th, thead, tr, u, ul</code>	     <p/>	     Links do not have an enforced <code>rel=nofollow</code> attribute, but you can add that if desired.		     @return whitelist	     */	    public static Whitelist relaxed() {	        return new Whitelist()	                .addTags(	                        "a", "b", "blockquote", "br", "caption", "cite", "code", "col",	                        "colgroup", "dd", "div", "dl", "dt", "em", "h1", "h2", "h3", "h4", "h5", "h6",	                        "i", "img", "li", "ol", "p", "pre", "q", "small", "strike", "strong",	                        "sub", "sup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "u",	                        "ul")		                .addAttributes("a", "href", "title")	                .addAttributes("blockquote", "cite")	                .addAttributes("col", "span", "width")	                .addAttributes("colgroup", "span", "width")	                .addAttributes("img", "align", "alt", "height", "src", "title", "width")	                .addAttributes("ol", "start", "type")	                .addAttributes("q", "cite")	                .addAttributes("table", "summary", "width")	                .addAttributes("td", "abbr", "axis", "colspan", "rowspan", "width")	                .addAttributes(	                        "th", "abbr", "axis", "colspan", "rowspan", "scope",	                        "width")	                .addAttributes("ul", "type")		                .addProtocols("a", "href", "ftp", "http", "https", "mailto")	                .addProtocols("blockquote", "cite", "http", "https")	                .addProtocols("img", "src", "http", "https")	                .addProtocols("q", "cite", "http", "https")	                ;	    }	
+
+org.jsoup.safety.Whitelist.Whitelist	0	
+/**	     Create a new, empty whitelist. Generally it will be better to start with a default prepared whitelist instead.		     @see #basic()	     @see #basicWithImages()	     @see #simpleText()	     @see #relaxed()	     */	    public Whitelist() {	        tagNames = new HashSet<TagName>();	        attributes = new HashMap<TagName, Set<AttributeKey>>();	        enforcedAttributes = new HashMap<TagName, Map<AttributeKey, AttributeValue>>();	        protocols = new HashMap<TagName, Map<AttributeKey, Set<Protocol>>>();	    }	
+
+org.jsoup.safety.Whitelist.addTags	1	String	
+/**	     Add a list of allowed elements to a whitelist. (If a tag is not allowed, it will be removed from the HTML.)		     @param tags tag names to allow	     @return this (for chaining)	     */	    public Whitelist addTags(String... tags) {	        Validate.notNull(tags);		        for (String tagName : tags) {	            Validate.notEmpty(tagName);	            tagNames.add(TagName.valueOf(tagName));	        }	        return this;	    }	
+
+org.jsoup.safety.Whitelist.addAttributes	2	String	String	
+/**	     Add a list of allowed attributes to a tag. (If an attribute is not allowed on an element, it will be removed.)	     <p/>	     To make an attribute valid for <b>all tags</b>, use the pseudo tag <code>:all</code>, e.g.	     <code>addAttributes(":all", "class")</code>.		     @param tag  The tag the attributes are for	     @param keys List of valid attributes for the tag	     @return this (for chaining)	     */	    public Whitelist addAttributes(String tag, String... keys) {	        Validate.notEmpty(tag);	        Validate.notNull(keys);		        TagName tagName = TagName.valueOf(tag);	        Set<AttributeKey> attributeSet = new HashSet<AttributeKey>();	        for (String key : keys) {	            Validate.notEmpty(key);	            attributeSet.add(AttributeKey.valueOf(key));	        }	        if (attributes.containsKey(tagName)) {	            Set<AttributeKey> currentSet = attributes.get(tagName);	            currentSet.addAll(attributeSet);	        } else {	            attributes.put(tagName, attributeSet);	        }	        return this;	    }	
+
+org.jsoup.safety.Whitelist.addEnforcedAttribute	3	String	String	String	
+/**	     Add an enforced attribute to a tag. An enforced attribute will always be added to the element. If the element	     already has the attribute set, it will be overridden.	     <p/>	     E.g.: <code>addEnforcedAttribute("a", "rel", "nofollow")</code> will make all <code>a</code> tags output as	     <code>&lt;a href="..." rel="nofollow"></code>		     @param tag   The tag the enforced attribute is for	     @param key   The attribute key	     @param value The enforced attribute value	     @return this (for chaining)	     */	    public Whitelist addEnforcedAttribute(String tag, String key, String value) {	        Validate.notEmpty(tag);	        Validate.notEmpty(key);	        Validate.notEmpty(value);		        TagName tagName = TagName.valueOf(tag);	        AttributeKey attrKey = AttributeKey.valueOf(key);	        AttributeValue attrVal = AttributeValue.valueOf(value);		        if (enforcedAttributes.containsKey(tagName)) {	            enforcedAttributes.get(tagName).put(attrKey, attrVal);	        } else {	            Map<AttributeKey, AttributeValue> attrMap = new HashMap<AttributeKey, AttributeValue>();	            attrMap.put(attrKey, attrVal);	            enforcedAttributes.put(tagName, attrMap);	        }	        return this;	    }	
+
+org.jsoup.safety.Whitelist.addProtocols	3	String	String	String	
+/**	     Add allowed URL protocols for an element's URL attribute. This restricts the possible values of the attribute to	     URLs with the defined protocol.	     <p/>	     E.g.: <code>addProtocols("a", "href", "ftp", "http", "https")</code>		     @param tag       Tag the URL protocol is for	     @param key       Attribute key	     @param protocols List of valid protocols	     @return this, for chaining	     */	    public Whitelist addProtocols(String tag, String key, String... protocols) {	        Validate.notEmpty(tag);	        Validate.notEmpty(key);	        Validate.notNull(protocols);		        TagName tagName = TagName.valueOf(tag);	        AttributeKey attrKey = AttributeKey.valueOf(key);	        Map<AttributeKey, Set<Protocol>> attrMap;	        Set<Protocol> protSet;		        if (this.protocols.containsKey(tagName)) {	            attrMap = this.protocols.get(tagName);	        } else {	            attrMap = new HashMap<AttributeKey, Set<Protocol>>();	            this.protocols.put(tagName, attrMap);	        }	        if (attrMap.containsKey(attrKey)) {	            protSet = attrMap.get(attrKey);	        } else {	            protSet = new HashSet<Protocol>();	            attrMap.put(attrKey, protSet);	        }	        for (String protocol : protocols) {	            Validate.notEmpty(protocol);	            Protocol prot = Protocol.valueOf(protocol);	            protSet.add(prot);	        }	        return this;	    }	
+
+org.jsoup.safety.Whitelist.isSafeTag	1	String	
+boolean isSafeTag(String tag) {	        return tagNames.contains(TagName.valueOf(tag));	    }	
+
+org.jsoup.safety.Whitelist.isSafeAttribute	3	String	Element	Attribute	
+boolean isSafeAttribute(String tagName, Element el, Attribute attr) {	        TagName tag = TagName.valueOf(tagName);	        AttributeKey key = AttributeKey.valueOf(attr.getKey());		        if (attributes.containsKey(tag)) {	            if (attributes.get(tag).contains(key)) {	                if (protocols.containsKey(tag)) {	                    Map<AttributeKey, Set<Protocol>> attrProts = protocols.get(tag);	                    // ok if not defined protocol; otherwise test	                    return !attrProts.containsKey(key) || testValidProtocol(el, attr, attrProts.get(key));	                } else { // attribute found, no protocols defined, so OK	                    return true;	                }	            }	        } else { // no attributes defined for tag, try :all tag	            return !tagName.equals(":all") && isSafeAttribute(":all", el, attr);	        }	        return false;	    }	
+
+org.jsoup.safety.Whitelist.testValidProtocol	3	Element	Attribute	Set<Protocol>	
+private boolean testValidProtocol(Element el, Attribute attr, Set<Protocol> protocols) {	        // resolve relative urls to abs, and update the attribute so output html has abs.	        // rels without a baseuri get removed	        String value = el.absUrl(attr.getKey());	        attr.setValue(value);	        	        for (Protocol protocol : protocols) {	            String prot = protocol.toString() + ":";	            if (value.toString().toLowerCase().startsWith(prot)) {	                return true;	            }	        }	        return false;	    }	
+
+org.jsoup.safety.Whitelist.getEnforcedAttributes	1	String	
+Attributes getEnforcedAttributes(String tagName) {	        Attributes attrs = new Attributes();	        TagName tag = TagName.valueOf(tagName);	        if (enforcedAttributes.containsKey(tag)) {	            Map<AttributeKey, AttributeValue> keyVals = enforcedAttributes.get(tag);	            for (Map.Entry<AttributeKey, AttributeValue> entry : keyVals.entrySet()) {	                attrs.put(entry.getKey().toString(), entry.getValue().toString());	            }	        }	        return attrs;	    }	
+
+org.jsoup.safety.Whitelist.TagName.TagName	1	String	
+TagName(String value) {	            super(value);	        }	
+
+org.jsoup.safety.Whitelist.TagName.valueOf	1	String	
+static TagName valueOf(String value) {	            return new TagName(value);	        }	
+
+org.jsoup.safety.Whitelist.AttributeKey.AttributeKey	1	String	
+AttributeKey(String value) {	            super(value);	        }	
+
+org.jsoup.safety.Whitelist.AttributeKey.valueOf	1	String	
+static AttributeKey valueOf(String value) {	            return new AttributeKey(value);	        }	
+
+org.jsoup.safety.Whitelist.AttributeValue.AttributeValue	1	String	
+AttributeValue(String value) {	            super(value);	        }	
+
+org.jsoup.safety.Whitelist.AttributeValue.valueOf	1	String	
+static AttributeValue valueOf(String value) {	            return new AttributeValue(value);	        }	
+
+org.jsoup.safety.Whitelist.Protocol.Protocol	1	String	
+Protocol(String value) {	            super(value);	        }	
+
+org.jsoup.safety.Whitelist.Protocol.valueOf	1	String	
+static Protocol valueOf(String value) {	            return new Protocol(value);	        }	
+
+org.jsoup.safety.Whitelist.TypedValue.TypedValue	1	String	
+TypedValue(String value) {	            Validate.notNull(value);	            this.value = value;	        }	
+
+org.jsoup.safety.Whitelist.TypedValue.hashCode	0	
+@Override	        public int hashCode() {	            final int prime = 31;	            int result = 1;	            result = prime * result + ((value == null) ? 0 : value.hashCode());	            return result;	        }	
+
+org.jsoup.safety.Whitelist.TypedValue.equals	1	Object	
+@Override	        public boolean equals(Object obj) {	            if (this == obj) return true;	            if (obj == null) return false;	            if (getClass() != obj.getClass()) return false;	            TypedValue other = (TypedValue) obj;	            if (value == null) {	                if (other.value != null) return false;	            } else if (!value.equals(other.value)) return false;	            return true;	        }	
+
+org.jsoup.safety.Whitelist.TypedValue.toString	0	
+@Override	        public String toString() {	            return value;	        }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/safety/Cleaner.java
+org.jsoup.safety.Cleaner.Cleaner	1	Whitelist	
+/**	     Create a new cleaner, that sanitizes documents using the supplied whitelist.	     @param whitelist white-list to clean with	     */	    public Cleaner(Whitelist whitelist) {	        Validate.notNull(whitelist);	        this.whitelist = whitelist;	    }	
+
+org.jsoup.safety.Cleaner.clean	1	Document	
+/**	     Creates a new, clean document, from the original dirty document, containing only elements allowed by the whitelist.	     The original document is not modified. Only elements from the dirt document's <code>body</code> are used.	     @param dirtyDocument Untrusted base document to clean.	     @return cleaned document.	     */	    public Document clean(Document dirtyDocument) {	        Validate.notNull(dirtyDocument);		        Document clean = Document.createShell(dirtyDocument.baseUri());	        copySafeNodes(dirtyDocument.body(), clean.body());		        return clean;	    }	
+
+org.jsoup.safety.Cleaner.isValid	1	Document	
+/**	     Dertmines if the input document is valid, against the whitelist. It is considered valid if all the tags and attributes	     in the input HTML are allowed by the whitelist.	     <p/>	     This method can be used as a validator for user input forms. An invalid document will still be cleaned successfully	     using the {@link #clean(Document)} document. If using as a validator, it is recommended to still clean the document	     to ensure enforced attributes are set correctly, and that the output is tidied.	     @param dirtyDocument document to test	     @return true if no tags or attributes need to be removed; false if they do	     */	    public boolean isValid(Document dirtyDocument) {	        Validate.notNull(dirtyDocument);		        Document clean = Document.createShell(dirtyDocument.baseUri());	        int numDiscarded = copySafeNodes(dirtyDocument.body(), clean.body());	        return numDiscarded == 0;	    }	
+
+org.jsoup.safety.Cleaner.copySafeNodes	2	Element	Element	
+/**	     Iterates the input and copies trusted nodes (tags, attributes, text) into the destination.	     @param source source of HTML	     @param dest destination element to copy into	     @return number of discarded elements (that were considered unsafe)	     */	    private int copySafeNodes(Element source, Element dest) {	        List<Node> sourceChildren = source.childNodes();	        int numDiscarded = 0;		        for (Node sourceChild : sourceChildren) {	            if (sourceChild instanceof Element) {	                Element sourceEl = (Element) sourceChild;		                if (whitelist.isSafeTag(sourceEl.tagName())) { // safe, clone and copy safe attrs	                    ElementMeta meta = createSafeElement(sourceEl);	                    Element destChild = meta.el;	                    dest.appendChild(destChild);		                    numDiscarded += meta.numAttribsDiscarded;	                    numDiscarded += copySafeNodes(sourceEl, destChild); // recurs	                } else { // not a safe tag, but it may have children (els or text) that are, so recurse	                    numDiscarded++;	                    numDiscarded += copySafeNodes(sourceEl, dest);	                }	            } else if (sourceChild instanceof TextNode) {	                TextNode sourceText = (TextNode) sourceChild;	                TextNode destText = new TextNode(sourceText.getWholeText(), sourceChild.baseUri());	                dest.appendChild(destText);	            } // else, we don't care about comments, xml proc instructions, etc	        }	        return numDiscarded;	    }	
+
+org.jsoup.safety.Cleaner.createSafeElement	1	Element	
+private ElementMeta createSafeElement(Element sourceEl) {	        String sourceTag = sourceEl.tagName();	        Attributes destAttrs = new Attributes();	        Element dest = new Element(Tag.valueOf(sourceTag), sourceEl.baseUri(), destAttrs);	        int numDiscarded = 0;		        Attributes sourceAttrs = sourceEl.attributes();	        for (Attribute sourceAttr : sourceAttrs) {	            if (whitelist.isSafeAttribute(sourceTag, sourceEl, sourceAttr))	                destAttrs.put(sourceAttr);	            else	                numDiscarded++;	        }	        Attributes enforcedAttrs = whitelist.getEnforcedAttributes(sourceTag);	        destAttrs.addAll(enforcedAttrs);		        return new ElementMeta(dest, numDiscarded);	    }	
+
+org.jsoup.safety.Cleaner.ElementMeta.ElementMeta	2	Element	int	
+ElementMeta(Element el, int numAttribsDiscarded) {	            this.el = el;	            this.numAttribsDiscarded = numAttribsDiscarded;	        }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Attributes.java
+org.jsoup.nodes.Attributes.get	1	String	
+/**	     Get an attribute value by key.	     @param key the attribute key	     @return the attribute value if set; or empty string if not set.	     @see #hasKey(String)	     */	    public String get(String key) {	        Validate.notEmpty(key);	        	        Attribute attr = attributes.get(key.toLowerCase());	        return attr != null ? attr.getValue() : "";	    }	
+
+org.jsoup.nodes.Attributes.put	2	String	String	
+/**	     Set a new attribute, or replace an existing one by key.	     @param key attribute key	     @param value attribute value	     */	    public void put(String key, String value) {	        Attribute attr = new Attribute(key, value);	        put(attr);	    }	
+
+org.jsoup.nodes.Attributes.put	1	Attribute	
+/**	     Set a new attribute, or replace an existing one by key.	     @param attribute attribute	     */	    public void put(Attribute attribute) {	        Validate.notNull(attribute);	        attributes.put(attribute.getKey(), attribute);	    }	
+
+org.jsoup.nodes.Attributes.remove	1	String	
+/**	     Remove an attribute by key.	     @param key attribute key to remove	     */	    public void remove(String key) {	        Validate.notEmpty(key);	        attributes.remove(key.toLowerCase());	    }	
+
+org.jsoup.nodes.Attributes.hasKey	1	String	
+/**	     Tests if these attributes contain an attribute with this key.	     @param key key to check for	     @return true if key exists, false otherwise	     */	    public boolean hasKey(String key) {	        return attributes.containsKey(key.toLowerCase());	    }	
+
+org.jsoup.nodes.Attributes.size	0	
+/**	     Get the number of attributes in this set.	     @return size	     */	    public int size() {	        return attributes.size();	    }	
+
+org.jsoup.nodes.Attributes.addAll	1	Attributes	
+/**	     Add all the attributes from the incoming set to this set.	     @param incoming attributes to add to these attributes.	     */	    public void addAll(Attributes incoming) {	        attributes.putAll(incoming.attributes);	    }	
+
+org.jsoup.nodes.Attributes.iterator	0	
+public Iterator<Attribute> iterator() {	        return asList().iterator();	    }	
+
+org.jsoup.nodes.Attributes.asList	0	
+/**	     Get the attributes as a List, for iteration. Do not modify the keys of the attributes via this view, as changes	     to keys will not be recognised in the containing set.	     @return an view of the attributes as a List.	     */	    public List<Attribute> asList() {	        List<Attribute> list = new ArrayList<Attribute>(attributes.size());	        for (Map.Entry<String, Attribute> entry : attributes.entrySet()) {	            list.add(entry.getValue());	        }	        return Collections.unmodifiableList(list);	    }	
+
+org.jsoup.nodes.Attributes.html	0	
+/**	     Get the HTML representation of these attributes.	     @return HTML	     */	    public String html() {	        StringBuilder accum = new StringBuilder();	        for (Attribute attribute : this) {	            accum.append(" ");	            accum.append(attribute.html());	        }	        return accum.toString();	    }	
+
+org.jsoup.nodes.Attributes.toString	0	
+public String toString() {	        return html();	    }	
+
+org.jsoup.nodes.Attributes.equals	1	Object	
+@Override	    public boolean equals(Object o) {	        if (this == o) return true;	        if (!(o instanceof Attributes)) return false;	        	        Attributes that = (Attributes) o;	        	        if (attributes != null ? !attributes.equals(that.attributes) : that.attributes != null) return false;	        	        return true;	    }	
+
+org.jsoup.nodes.Attributes.hashCode	0	
+@Override	    public int hashCode() {	        return attributes != null ? attributes.hashCode() : 0;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Document.java
+org.jsoup.nodes.Document.Document	1	String	
+/**	     Create a new, empty Document.	     @param baseUri base URI of document	     @see org.jsoup.Jsoup#parse	     @see #createShell	     */	    public Document(String baseUri) {	        super(Tag.valueOf("#root"), baseUri);	    }	
+
+org.jsoup.nodes.Document.createShell	1	String	
+/**	     Create a valid, empty shell of a document, suitable for adding more elements to.	     @param baseUri baseUri of document	     @return document with html, head, and body elements.	     */	    static public Document createShell(String baseUri) {	        Validate.notNull(baseUri);		        Document doc = new Document(baseUri);	        Element html = doc.appendElement("html");	        html.appendElement("head");	        html.appendElement("body");		        return doc;	    }	
+
+org.jsoup.nodes.Document.head	0	
+/**	     Accessor to the document's {@code head} element.	     @return {@code head}	     */	    public Element head() {	        return getElementsByTag("head").first();	    }	
+
+org.jsoup.nodes.Document.body	0	
+/**	     Accessor to the document's {@code body} element.	     @return {@code body}	     */	    public Element body() {	        return getElementsByTag("body").first();	    }	
+
+org.jsoup.nodes.Document.title	0	
+/**	     Get the string contents of the document's {@code title} element.	     @return Trimed title, or empty string if none set.	     */	    public String title() {	        Element titleEl = getElementsByTag("title").first();	        return titleEl != null ? titleEl.text().trim() : "";	    }	
+
+org.jsoup.nodes.Document.title	1	String	
+/**	     Set the document's {@code title} element. Updates the existing element, or adds {@code title} to {@code head} if	     not present	     @param title string to set as title	     */	    public void title(String title) {	        Validate.notNull(title);	        Element titleEl = getElementsByTag("title").first();	        if (titleEl == null) { // add to head	            head().appendElement("title").text(title);	        } else {	            titleEl.text(title);	        }	    }	
+
+org.jsoup.nodes.Document.createElement	1	String	
+/**	     Create a new Element, with this document's base uri. Does not make the new element a child of this document.	     @param tagName element tag name (e.g. {@code a})	     @return new element	     */	    public Element createElement(String tagName) {	        return new Element(Tag.valueOf(tagName), this.baseUri());	    }	
+
+org.jsoup.nodes.Document.normalise	0	
+/**	     Normalise the document. This happens after the parse phase so generally does not need to be called.	     Moves any text content that is not in the body element into the body.	     @return this document after normalisation	     */	    public Document normalise() {	        if (select("html").isEmpty())	            appendElement("html");	        if (head() == null)	            select("html").first().prependElement("head");	        if (body() == null)	            select("html").first().appendElement("body");		        // pull text nodes out of root, html, and head els, and push into body. non-text nodes are already taken care	        // of. do in inverse order to maintain text order.	        normalise(head());	        normalise(select("html").first());	        normalise(this);        		        return this;	    }	
+
+org.jsoup.nodes.Document.normalise	1	Element	
+private void normalise(Element element) {	        List<Node> toMove = new ArrayList<Node>();	        for (Node node: element.childNodes) {	            if (node instanceof TextNode) {	                TextNode tn = (TextNode) node;	                if (!tn.isBlank())	                    toMove.add(tn);	            }	        }		        for (Node node: toMove) {	            element.removeChild(node);	            body().appendChild(new TextNode(" ", ""));	            body().appendChild(node);	        }	    }	
+
+org.jsoup.nodes.Document.outerHtml	0	
+@Override	    public String outerHtml() {	        return super.html(); // no outer wrapper tag	    }	
+
+org.jsoup.nodes.Document.text	1	String	
+/**	     Set the text of the {@code body} of this document. Any existing nodes within the body will be cleared.	     @param text unencoded text	     @return this document	     */	    @Override	    public Element text(String text) {	        body().text(text); // overridden to not nuke doc structure	        return this;	    }	
+
+org.jsoup.nodes.Document.nodeName	0	
+@Override	    public String nodeName() {	        return "#document";	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Evaluator.java
+org.jsoup.nodes.Evaluator.Evaluator	0	
+private Evaluator() {}	
+
+org.jsoup.nodes.Evaluator.Tag.Tag	1	String	
+Tag (String tagName) {	            this.tagName = tagName;	        }	
+
+org.jsoup.nodes.Evaluator.Tag.matches	1	Element	
+public boolean matches(Element element) {	            return (element.tagName().equals(tagName));	        }	
+
+org.jsoup.nodes.Evaluator.Id.Id	1	String	
+Id (String id) {	            this.id = id;	        }	
+
+org.jsoup.nodes.Evaluator.Id.matches	1	Element	
+public boolean matches(Element element) {	            return (id.equals(element.id()));	        }	
+
+org.jsoup.nodes.Evaluator.Class.Class	1	String	
+Class(String className) {	            this.className = className;	        }	
+
+org.jsoup.nodes.Evaluator.Class.matches	1	Element	
+public boolean matches(Element element) {	            return (element.hasClass(className));	        }	
+
+org.jsoup.nodes.Evaluator.Attribute.Attribute	1	String	
+Attribute (String key) {	            this.key = key;	        }	
+
+org.jsoup.nodes.Evaluator.Attribute.matches	1	Element	
+public boolean matches(Element element) {	            return (element.hasAttr(key));	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValue.AttributeWithValue	2	String	String	
+AttributeWithValue(String key, String value) {	            super(key, value);	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValue.matches	1	Element	
+public boolean matches(Element element) {	            return (value.equalsIgnoreCase(element.attr(key)));	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueNot.AttributeWithValueNot	2	String	String	
+AttributeWithValueNot(String key, String value) {	            super(key, value);	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueNot.matches	1	Element	
+public boolean matches(Element element) {	            return (!value.equalsIgnoreCase(element.attr(key)));	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueStarting.AttributeWithValueStarting	2	String	String	
+AttributeWithValueStarting(String key, String value) {	            super(key, value);	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueStarting.matches	1	Element	
+public boolean matches(Element element) {	            return element.attr(key).toLowerCase().startsWith(value); // value is lower case already	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueEnding.AttributeWithValueEnding	2	String	String	
+AttributeWithValueEnding(String key, String value) {	            super(key, value);	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueEnding.matches	1	Element	
+public boolean matches(Element element) {	            return element.attr(key).toLowerCase().endsWith(value); // value is lower case	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueContaining.AttributeWithValueContaining	2	String	String	
+AttributeWithValueContaining(String key, String value) {	            super(key, value);	        }	
+
+org.jsoup.nodes.Evaluator.AttributeWithValueContaining.matches	1	Element	
+public boolean matches(Element element) {	            return element.attr(key).toLowerCase().contains(value); // value is lower case	        }	
+
+org.jsoup.nodes.Evaluator.AttributeKeyPair.AttributeKeyPair	2	String	String	
+AttributeKeyPair(String key, String value) {	            Validate.notEmpty(key);	            Validate.notEmpty(value);	            	            this.key = key.trim().toLowerCase();	            this.value = value.trim().toLowerCase();	        }	
+
+org.jsoup.nodes.Evaluator.AllElements.matches	1	Element	
+public boolean matches(Element element) {	            return true;	        }	
+
+org.jsoup.nodes.Evaluator.IndexLessThan.IndexLessThan	1	int	
+IndexLessThan(int index) {	            super(index);	        }	
+
+org.jsoup.nodes.Evaluator.IndexLessThan.matches	1	Element	
+public boolean matches(Element element) {	            return element.elementSiblingIndex() < index;	        }	
+
+org.jsoup.nodes.Evaluator.IndexGreaterThan.IndexGreaterThan	1	int	
+IndexGreaterThan(int index) {	            super(index);	        }	
+
+org.jsoup.nodes.Evaluator.IndexGreaterThan.matches	1	Element	
+public boolean matches(Element element) {	            return element.elementSiblingIndex() > index;	        }	
+
+org.jsoup.nodes.Evaluator.IndexEquals.IndexEquals	1	int	
+IndexEquals(int index) {	            super(index);	        }	
+
+org.jsoup.nodes.Evaluator.IndexEquals.matches	1	Element	
+public boolean matches(Element element) {	            return element.elementSiblingIndex() == index;	        }	
+
+org.jsoup.nodes.Evaluator.IndexEvaluator.IndexEvaluator	1	int	
+IndexEvaluator(int index) {	            this.index = index;	        }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Element.java
+org.jsoup.nodes.Element.Element	3	Tag	String	Attributes	
+/**	     * Create a new, standalone Element. (Standalone in that is has no parent.)	     * 	     * @param tag tag of this element	     * @param baseUri the base URI	     * @param attributes initial attributes	     * @see #appendChild(Node)	     * @see #appendElement(String)	     */	    public Element(Tag tag, String baseUri, Attributes attributes) {	        super(baseUri, attributes);	        	        Validate.notNull(tag);    	        this.tag = tag;	    }	
+
+org.jsoup.nodes.Element.Element	2	Tag	String	
+/**	     * Create a new Element from a tag and a base URI.	     * 	     * @param tag element tag	     * @param baseUri the base URI of this element. It is acceptable for the base URI to be an empty	     *            string, but not null.	     * @see Tag#valueOf(String)	     */	    public Element(Tag tag, String baseUri) {	        this(tag, baseUri, new Attributes());	    }	
+
+org.jsoup.nodes.Element.nodeName	0	
+@Override	    public String nodeName() {	        return tag.getName();	    }	
+
+org.jsoup.nodes.Element.tagName	0	
+/**	     * Get the name of the tag for this element. E.g. {@code div}	     * 	     * @return the tag name	     */	    public String tagName() {	        return tag.getName();	    }	
+
+org.jsoup.nodes.Element.tag	0	
+/**	     * Get the Tag for this element.	     * 	     * @return the tag object	     */	    public Tag tag() {	        return tag;	    }	
+
+org.jsoup.nodes.Element.isBlock	0	
+/**	     * Test if this element is a block-level element. (E.g. {@code <div> == true} or an inline element	     * {@code <p> == false}).	     * 	     * @return true if block, false if not (and thus inline)	     */	    public boolean isBlock() {	        return tag.isBlock();	    }	
+
+org.jsoup.nodes.Element.id	0	
+/**	     * Get the {@code id} attribute of this element.	     * 	     * @return The id attribute, if present, or an empty string if not.	     */	    public String id() {	        String id = attr("id");	        return id == null ? "" : id;	    }	
+
+org.jsoup.nodes.Element.attr	2	String	String	
+/**	     * Set an attribute value on this element. If this element already has an attribute with the	     * key, its value is updated; otherwise, a new attribute is added.	     * 	     * @return this element	     */	    public Element attr(String attributeKey, String attributeValue) {	        super.attr(attributeKey, attributeValue);	        return this;	    }	
+
+org.jsoup.nodes.Element.parent	0	
+@Override	    public Element parent() {	        return (Element) super.parent();	    }	
+
+org.jsoup.nodes.Element.child	1	int	
+/**	     * Get a child element of this element, by its 0-based index number.	     * <p/>	     * Note that an element can have both mixed Nodes and Elements as children. This method inspects	     * a filtered list of children that are elements, and the index is based on that filtered list.	     * 	     * @param index the index number of the element to retrieve	     * @return the child element, if it exists, or {@code null} if absent.	     * @see #childNode(int)	     */	    public Element child(int index) {	        return children().get(index);	    }	
+
+org.jsoup.nodes.Element.children	0	
+/**	     * Get this element's child elements.	     * <p/>	     * This is effectively a filter on {@link #childNodes()} to get Element nodes.	     * @return child elements. If this element has no children, returns an	     * empty list.	     * @see #childNodes()	     */	    public Elements children() {	        // create on the fly rather than maintaining two lists. if gets slow, memoize, and mark dirty on change	        List<Element> elements = new ArrayList<Element>();	        for (Node node : childNodes) {	            if (node instanceof Element)	                elements.add((Element) node);	        }	        return new Elements(elements);	    }	
+
+org.jsoup.nodes.Element.select	1	String	
+/**	     * Find elements that match the selector query, with this element as the starting context. Matched elements	     * may include this element, or any of its children.	     * <p/>	     * This method is generally more powerful to use than the DOM-type {@code getElementBy*} methods, because	     * multiple filters can be combined, e.g.:	     * <ul>	     * <li>{@code el.select("a[href]")} - finds links ({@code a} tags with {@code href} attributes)	     * <li>{@code el.select("a[href*=example.com]")} - finds links pointing to example.com (loosely)	     * </ul>	     * <p/>	     * See the query syntax documentation in {@link org.jsoup.select.Selector}.	     *	     * @param query a {@link Selector} query	     * @return elements that match the query (empty if none match)	     * @see org.jsoup.select.Selector	     */	    public Elements select(String query) {	        return Selector.select(query, this);	    }	
+
+org.jsoup.nodes.Element.appendChild	1	Node	
+/**	     * Add a node to the last child of this element.	     * 	     * @param child node to add. Must not already have a parent.	     * @return this element, so that you can add more child nodes or elements.	     */	    public Element appendChild(Node child) {	        Validate.notNull(child);	        	        child.setParentNode(this);	        childNodes.add(child);	        return this;	    }	
+
+org.jsoup.nodes.Element.prependChild	1	Node	
+/**	     * Add a node to the start of this element's children.	     * 	     * @param child node to add. Must not already have a parent.	     * @return this element, so that you can add more child nodes or elements.	     */	    public Element prependChild(Node child) {	        Validate.notNull(child);	        	        child.setParentNode(this);	        childNodes.add(0, child);	        return this;	    }	
+
+org.jsoup.nodes.Element.appendElement	1	String	
+/**	     * Create a new element by tag name, and add it as the last child.	     * 	     * @param tagName the name of the tag (e.g. {@code div}).	     * @return the new element, to allow you to add content to it, e.g.:	     *  {@code parent.appendElement("h1").attr("id", "header").text("Welcome");}	     */	    public Element appendElement(String tagName) {	        Element child = new Element(Tag.valueOf(tagName), baseUri());	        appendChild(child);	        return child;	    }	
+
+org.jsoup.nodes.Element.prependElement	1	String	
+/**	     * Create a new element by tag name, and add it as the first child.	     * 	     * @param tagName the name of the tag (e.g. {@code div}).	     * @return the new element, to allow you to add content to it, e.g.:	     *  {@code parent.prependElement("h1").attr("id", "header").text("Welcome");}	     */	    public Element prependElement(String tagName) {	        Element child = new Element(Tag.valueOf(tagName), baseUri());	        prependChild(child);	        return child;	    }	
+
+org.jsoup.nodes.Element.appendText	1	String	
+/**	     * Create and append a new TextNode to this element.	     * 	     * @param text the unencoded text to add	     * @return this element	     */	    public Element appendText(String text) {	        TextNode node = new TextNode(text, baseUri());	        appendChild(node);	        return this;	    }	
+
+org.jsoup.nodes.Element.prependText	1	String	
+/**	     * Create and prepend a new TextNode to this element.	     * 	     * @param text the unencoded text to add	     * @return this element	     */	    public Element prependText(String text) {	        TextNode node = new TextNode(text, baseUri());	        prependChild(node);	        return this;	    }	
+
+org.jsoup.nodes.Element.append	1	String	
+/**	     * Add inner HTML to this element. The supplied HTML will be parsed, and each node appended to the end of the children.	     * @param html HTML to add inside this element, after the existing HTML	     * @return this element	     * @see #html(String)	     */	    public Element append(String html) {	        Validate.notNull(html);	        	        Element fragment = Parser.parseBodyFragment(html, baseUri).body();	        // TODO: must parse without implicit elements, so you can e.g. add <td> to a <tr> (without creating a whole new table)	        for (Node node : fragment.childNodes()) {	            node.parentNode = null;	            appendChild(node);	        }	        return this;	    }	
+
+org.jsoup.nodes.Element.prepend	1	String	
+/**	     * Add inner HTML to this element. The supplied HTML will be parsed, and each node prepended to the start of the children.	     * @param html HTML to add inside this element, before the existing HTML	     * @return this element	     * @see #html(String)	     */	    public Element prepend(String html) {	        Validate.notNull(html);	        	        Element fragment = Parser.parseBodyFragment(html, baseUri).body();	        // TODO: must parse without implicit elements, so you can e.g. add <td> to a <tr> (without creating a whole new table)	        List<Node> nodes = fragment.childNodes();	        for (int i = nodes.size() - 1; i >= 0; i--) {	            Node node = nodes.get(i);	            node.parentNode = null;	            prependChild(node);	        }	        return this;	    }	
+
+org.jsoup.nodes.Element.empty	0	
+/**	     * Remove all of the element's child nodes. Any attributes are left as-is.	     * @return this element	     */	    public Element empty() {	        childNodes.clear();	        return this;	    }	
+
+org.jsoup.nodes.Element.wrap	1	String	
+/**	     Wrap the supplied HTML around this element.	     @param html HTML to wrap around this element, e.g. {@code <div class="head"></div>}. Can be arbitralily deep.	     @return this element, for chaining.	     */	    public Element wrap(String html) {	        Validate.notEmpty(html);		        Element wrapBody = Parser.parseBodyFragment(html, baseUri).body();	        Elements wrapChildren = wrapBody.children();	        Element wrap = wrapChildren.first();	        if (wrap == null) // nothing to wrap with; noop	            return null;		        Element deepest = getDeepChild(wrap);	        parentNode.replaceChild(this, wrap);	        deepest.addChild(this);		        // remainder (unbalananced wrap, like <div></div><p></p> -- The <p> is remainder	        if (wrapChildren.size() > 1) {	            for (int i = 1; i < wrapChildren.size(); i++) { // skip first	                Element remainder = wrapChildren.get(i);	                remainder.parentNode.removeChild(remainder);	                wrap.appendChild(remainder);	            }	        }	        return this;	    }	
+
+org.jsoup.nodes.Element.getDeepChild	1	Element	
+private Element getDeepChild(Element el) {	        List<Element> children = el.children();	        if (children.size() > 0)	            return getDeepChild(children.get(0));	        else	            return el;	    }	
+
+org.jsoup.nodes.Element.siblingElements	0	
+/**	     * Get sibling elements.	     * @return sibling elements	     */	    public Elements siblingElements() {	        return parent().children();	    }	
+
+org.jsoup.nodes.Element.nextElementSibling	0	
+/**	     * Gets the next sibling element of this element. E.g., if a {@code div} contains two {@code p}s, 	     * the {@code nextElementSibling} of the first {@code p} is the second {@code p}.	     * <p/>	     * This is similar to {@link #nextSibling()}, but specifically finds only Elements	     * @return the next element, or null if there is no next element	     * @see #previousElementSibling()	     */	    public Element nextElementSibling() {	        List<Element> siblings = parent().children();	        Integer index = indexInList(this, siblings);	        Validate.notNull(index);	        if (siblings.size() > index+1)	            return siblings.get(index+1);	        else	            return null;	    }	
+
+org.jsoup.nodes.Element.previousElementSibling	0	
+/**	     * Gets the previous element sibling of this element.	     * @return the previous element, or null if there is no previous element	     * @see #nextElementSibling()	     */	    public Element previousElementSibling() {	        List<Element> siblings = parent().children();	        Integer index = indexInList(this, siblings);	        Validate.notNull(index);	        if (index > 0)	            return siblings.get(index-1);	        else	            return null;	    }	
+
+org.jsoup.nodes.Element.firstElementSibling	0	
+/**	     * Gets the first element sibling of this element.	     * @return the first sibling that is an element (aka the parent's first element child) 	     */	    public Element firstElementSibling() {	        // todo: should firstSibling() exclude this?	        List<Element> siblings = parent().children();	        return siblings.size() > 1 ? siblings.get(0) : null;	    }	
+
+org.jsoup.nodes.Element.elementSiblingIndex	0	
+/**	     * Get the list index of this element in its element sibling list. I.e. if this is the first element	     * sibling, returns 0.	     * @return position in element sibling list	     */	    public Integer elementSiblingIndex() {	       if (parent() == null) return 0;	       return indexInList(this, parent().children()); 	    }	
+
+org.jsoup.nodes.Element.lastElementSibling	0	
+/**	     * Gets the last element sibling of this element	     * @return the last sibling that is an element (aka the parent's last element child) 	     */	    public Element lastElementSibling() {	        List<Element> siblings = parent().children();	        return siblings.size() > 1 ? siblings.get(siblings.size() - 1) : null;	    }	
+
+org.jsoup.nodes.Element.getElementsByTag	1	String	
+/**	     * Finds elements, including and recursively under this element, with the specified tag name.	     * @param tagName The tag name to search for (case insensitively).	     * @return a matching unmodifiable list of elements. Will be empty if this element and none of its children match.	     */	    public Elements getElementsByTag(String tagName) {	        Validate.notEmpty(tagName);	        tagName = tagName.toLowerCase().trim();		        return Collector.collect(new Evaluator.Tag(tagName), this);	    }	
+
+org.jsoup.nodes.Element.getElementById	1	String	
+/**	     * Find an element by ID, including or under this element.	     * <p>	     * Note that this finds the first matching ID, starting with this element. If you search down from a different	     * starting point, it is possible to find a different element by ID. For unique element by ID within a Document,	     * use {@link Document#getElementById(String)}	     * @param id The ID to search for.	     * @return The first matching element by ID, starting with this element, or null if none found.	     */	    public Element getElementById(String id) {	        Validate.notEmpty(id);	        	        Elements elements = Collector.collect(new Evaluator.Id(id), this);	        if (elements.size() > 0)	            return elements.get(0);	        else	            return null;	    }	
+
+org.jsoup.nodes.Element.getElementsByClass	1	String	
+/**	     * Find elements that have this class, including or under this element. Case insensitive.	     * <p>	     * Elements can have multiple classes (e.g. {@code <div class="header round first">}. This method	     * checks each class, so you can find the above with {@code el.getElementsByClass("header");}.	     * 	     * @param className the name of the class to search for.	     * @return elements with the supplied class name, empty if none	     * @see #hasClass(String)	     * @see #classNames()	     */	    public Elements getElementsByClass(String className) {	        Validate.notEmpty(className);		        return Collector.collect(new Evaluator.Class(className), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttribute	1	String	
+/**	     * Find elements that have a named attribute set. Case insensitive.	     *	     * @param key name of the attribute	     * @return elements that have this attribute, empty if none	     */	    public Elements getElementsByAttribute(String key) {	        Validate.notEmpty(key);	        key = key.trim().toLowerCase();		        return Collector.collect(new Evaluator.Attribute(key), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttributeValue	2	String	String	
+/**	     * Find elements that have an attribute with the specific value. Case insensitive.	     * 	     * @param key name of the attribute	     * @param value value of the attribute	     * @return elements that have this attribute with this value, empty if none	     */	    public Elements getElementsByAttributeValue(String key, String value) {	        return Collector.collect(new Evaluator.AttributeWithValue(key, value), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttributeValueNot	2	String	String	
+/**	     * Find elements that either do not have this attribute, or have it with a different value. Case insensitive.	     * 	     * @param key name of the attribute	     * @param value value of the attribute	     * @return elements that do not have a matching attribute	     */	    public Elements getElementsByAttributeValueNot(String key, String value) {	        return Collector.collect(new Evaluator.AttributeWithValueNot(key, value), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttributeValueStarting	2	String	String	
+/**	     * Find elements that have attributes that start with the value prefix. Case insensitive.	     * 	     * @param key name of the attribute	     * @param valuePrefix start of attribute value	     * @return elements that have attributes that start with the value prefix	     */	    public Elements getElementsByAttributeValueStarting(String key, String valuePrefix) {	        return Collector.collect(new Evaluator.AttributeWithValueStarting(key, valuePrefix), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttributeValueEnding	2	String	String	
+/**	     * Find elements that have attributes that end with the value suffix. Case insensitive.	     * 	     * @param key name of the attribute	     * @param valueSuffix end of the attribute value	     * @return elements that have attributes that end with the value suffix	     */	    public Elements getElementsByAttributeValueEnding(String key, String valueSuffix) {	        return Collector.collect(new Evaluator.AttributeWithValueEnding(key, valueSuffix), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByAttributeValueContaining	2	String	String	
+/**	     * Find elements that have attributes whose value contains the match string. Case insensitive.	     * 	     * @param key name of the attribute	     * @param match substring of value to search for	     * @return elements that have attributes containing this text	     */	    public Elements getElementsByAttributeValueContaining(String key, String match) {	        return Collector.collect(new Evaluator.AttributeWithValueContaining(key, match), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByIndexLessThan	1	int	
+/**	     * Find elements whose sibling index is less than the supplied index.	     * @param index 0-based index	     * @return elements less than index	     */	    public Elements getElementsByIndexLessThan(int index) {	        return Collector.collect(new Evaluator.IndexLessThan(index), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByIndexGreaterThan	1	int	
+/**	     * Find elements whose sibling index is greater than the supplied index.	     * @param index 0-based index	     * @return elements greater than index	     */	    public Elements getElementsByIndexGreaterThan(int index) {	        return Collector.collect(new Evaluator.IndexGreaterThan(index), this);	    }	
+
+org.jsoup.nodes.Element.getElementsByIndexEquals	1	int	
+/**	     * Find elements whose sibling index is equal to the supplied index.	     * @param index 0-based index	     * @return elements equal to index	     */	    public Elements getElementsByIndexEquals(int index) {	        return Collector.collect(new Evaluator.IndexEquals(index), this);	    }	
+
+org.jsoup.nodes.Element.getAllElements	0	
+/**	     * Find all elements under this element (including self, and children of children).	     * 	     * @return all elements	     */	    public Elements getAllElements() {	        return Collector.collect(new Evaluator.AllElements(), this);	    }	
+
+org.jsoup.nodes.Element.text	0	
+/**	     * Gets the combined text of this element and all its children.	     * 	     * @return unencoded text, or empty string if none.	     */	    public String text() {	        StringBuilder sb = new StringBuilder();	        text(sb);	        return sb.toString().trim();	    }	
+
+org.jsoup.nodes.Element.text	1	StringBuilder	
+private void text(StringBuilder accum) {	        for (Node child : childNodes) {	            if (child instanceof TextNode) {	                TextNode textNode = (TextNode) child;	                String text = textNode.getWholeText();		                if (!preserveWhitespace()) {	                    text = TextNode.normaliseWhitespace(text);	                    if (TextNode.lastCharIsWhitespace(accum))	                        text = TextNode.stripLeadingWhitespace(text);	                }	                accum.append(text);		            } else if (child instanceof Element) {	                Element element = (Element) child;	                if (accum.length() > 0 && element.isBlock() && !TextNode.lastCharIsWhitespace(accum))	                    accum.append(" ");	                element.text(accum);	            }	        }	    }	
+
+org.jsoup.nodes.Element.preserveWhitespace	0	
+boolean preserveWhitespace() {	        return tag.preserveWhitespace() || parent() != null && parent().preserveWhitespace();	    }	
+
+org.jsoup.nodes.Element.text	1	String	
+/**	     * Set the text of this element. Any existing contents (text or elements) will be cleared	     * @param text unencoded text	     * @return this element	     */	    public Element text(String text) {	        Validate.notNull(text);		        empty();	        TextNode textNode = new TextNode(text, baseUri);	        appendChild(textNode);		        return this;	    }	
+
+org.jsoup.nodes.Element.hasText	0	
+/**	     Test if this element has any text content (that is not just whitespace).	     @return true if element has non-blank text content.	     */	    public boolean hasText() {	        for (Node child: childNodes) {	            if (child instanceof TextNode) {	                TextNode textNode = (TextNode) child;	                if (!textNode.isBlank())	                    return true;	            } else if (child instanceof Element) {	                Element el = (Element) child;	                if (el.hasText())	                    return true;	            }	        }	        return false;	    }	
+
+org.jsoup.nodes.Element.data	0	
+/**	     * Get the combined data of this element. Data is e.g. the inside of a {@code script} tag.	     * @return the data, or empty string if none	     */	    public String data() {	        StringBuilder sb = new StringBuilder();		        for (Node childNode : childNodes) {	            if (childNode instanceof DataNode) {	                DataNode data = (DataNode) childNode;	                sb.append(data.getWholeData());	            } else if (childNode instanceof Element) {	                Element element = (Element) childNode;	                String elementData = element.data();	                sb.append(elementData);	            }	        }	        return sb.toString();	    }	
+
+org.jsoup.nodes.Element.className	0	
+/**	     * Gets the literal value of this element's "class" attribute, which may include multiple class names, space	     * separated. (E.g. on <code>&lt;div class="header gray"></code> returns, "<code>header gray</code>")	     * @return The literal class attribute, or <b>empty string</b> if no class attribute set.	     */	    public String className() {	        return attributes.hasKey("class") ? attributes.get("class") : "";	    }	
+
+org.jsoup.nodes.Element.classNames	0	
+/**	     * Get all of the element's class names. E.g. on element {@code <div class="header gray"}>},	     * returns a set of two elements {@code "header", "gray"}. Note that modifications to this set are not pushed to	     * the backing {@code class} attribute; use the {@link #classNames(java.util.Set)} method to persist them.	     * @return set of classnames, empty if no class attribute	     */	    public Set<String> classNames() {	        if (classNames == null) {	            String[] names = className().split("\\s+");	            classNames = new LinkedHashSet<String>(Arrays.asList(names));	        }	        return classNames;	    }	
+
+org.jsoup.nodes.Element.classNames	1	Set<String>	
+/**	     Set the element's {@code class} attribute to the supplied class names.	     @param classNames set of classes	     @return this element, for chaining	     */	    public Element classNames(Set<String> classNames) {	        Validate.notNull(classNames);	        attributes.put("class", StringUtils.join(classNames, " "));	        return this;	    }	
+
+org.jsoup.nodes.Element.hasClass	1	String	
+/**	     * Tests if this element has a class.	     * @param className name of class to check for	     * @return true if it does, false if not	     */	    public boolean hasClass(String className) {	        return classNames().contains(className);	    }	
+
+org.jsoup.nodes.Element.addClass	1	String	
+/**	     Add a class name to this element's {@code class} attribute.	     @param className class name to add	     @return this element	     */	    public Element addClass(String className) {	        Validate.notNull(className);		        Set<String> classes = classNames();	        classes.add(className);	        classNames(classes);		        return this;	    }	
+
+org.jsoup.nodes.Element.removeClass	1	String	
+/**	     Remove a class name from this element's {@code class} attribute.	     @param className class name to remove	     @return this element	     */	    public Element removeClass(String className) {	        Validate.notNull(className);		        Set<String> classes = classNames();	        classes.remove(className);	        classNames(classes);		        return this;	    }	
+
+org.jsoup.nodes.Element.toggleClass	1	String	
+/**	     Toggle a class name on this element's {@code class} attribute: if present, remove it; otherwise add it.	     @param className class name to toggle	     @return this element	     */	    public Element toggleClass(String className) {	        Validate.notNull(className);		        Set<String> classes = classNames();	        if (classes.contains(className))	            classes.remove(className);	        else	            classes.add(className);	        classNames(classes);		        return this;	    }	
+
+org.jsoup.nodes.Element.val	0	
+/**	     * Get the value of a form element (input, textarea, etc).	     * @return the value of the form element, or empty string if not set.	     */	    public String val() {	        if (tagName().equals("textarea"))	            return text();	        else	            return attr("value");	    }	
+
+org.jsoup.nodes.Element.val	1	String	
+/**	     * Set the value of a form element (input, textarea, etc).	     * @param value value to set	     * @return this element (for chaining)	     */	    public Element val(String value) {	        if (tagName().equals("textarea"))	            text(value);	        else	            attr("value", value);	        return this;	    }	
+
+org.jsoup.nodes.Element.outerHtml	1	StringBuilder	
+void outerHtml(StringBuilder accum) {	        if (isBlock() || (parent() != null && parent().tag().canContainBlock() && siblingIndex() == 0))	            indent(accum);	        accum	                .append("<")	                .append(tagName())	                .append(attributes.html());		        if (childNodes.isEmpty() && tag.isEmpty()) {	            accum.append(" />");	        } else {	            accum.append(">");	            html(accum);	            if (tag.canContainBlock()) indent(accum);	            accum.append("</").append(tagName()).append(">");	        }	    }	
+
+org.jsoup.nodes.Element.html	0	
+/**	     * Retrieves the element's inner HTML. E.g. on a {@code <div>} with one empty {@code <p>}, would return	     * {@code <p></p>}. (Whereas {@link #outerHtml()} would return {@code <div><p></p></div>}.)	     * 	     * @return String of HTML.	     * @see #outerHtml()	     */	    public String html() {	        StringBuilder accum = new StringBuilder();	        html(accum); 	        return accum.toString().trim();	    }	
+
+org.jsoup.nodes.Element.html	1	StringBuilder	
+private void html(StringBuilder accum) {	        for (Node node : childNodes)	            node.outerHtml(accum);	    }	
+
+org.jsoup.nodes.Element.html	1	String	
+/**	     * Set this element's inner HTML. Clears the existing HTML first.	     * @param html HTML to parse and set into this element	     * @return this element	     * @see #append(String)	     */	    public Element html(String html) {	        empty();	        append(html);	        return this;	    }	
+
+org.jsoup.nodes.Element.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+org.jsoup.nodes.Element.equals	1	Object	
+@Override	    public boolean equals(Object o) {	        if (this == o) return true;	        if (!(o instanceof Element)) return false;	        if (!super.equals(o)) return false;		        Element element = (Element) o;		        if (tag != null ? !tag.equals(element.tag) : element.tag != null) return false;		        return true;	    }	
+
+org.jsoup.nodes.Element.hashCode	0	
+@Override	    public int hashCode() {	        int result = super.hashCode();	        result = 31 * result + (tag != null ? tag.hashCode() : 0);	        return result;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/DataNode.java
+org.jsoup.nodes.DataNode.DataNode	2	String	String	
+/**	     Create a new DataNode.	     @param data data contents	     @param baseUri base URI	     */	    public DataNode(String data, String baseUri) {	        super(baseUri);	        attributes.put(DATA_KEY, data);	    }	
+
+org.jsoup.nodes.DataNode.nodeName	0	
+public String nodeName() {	        return "#data";	    }	
+
+org.jsoup.nodes.DataNode.getWholeData	0	
+/**	     Get the data contents of this node. Will be unescaped and with original new lines, space etc.	     @return data	     */	    public String getWholeData() {	        return attributes.get(DATA_KEY);	    }	
+
+org.jsoup.nodes.DataNode.outerHtml	1	StringBuilder	
+void outerHtml(StringBuilder accum) {	        accum.append(getWholeData()); // data is not escaped in return from data nodes, so " in script, style is plain	    }	
+
+org.jsoup.nodes.DataNode.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+org.jsoup.nodes.DataNode.createFromEncoded	2	String	String	
+/**	     Create a new DataNode from HTML encoded data.	     @param encodedData encoded data	     @param baseUri bass URI	     @return new DataNode	     */	    public static DataNode createFromEncoded(String encodedData, String baseUri) {	        String data = StringEscapeUtils.unescapeHtml(encodedData);	        return new DataNode(data, baseUri);	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Attribute.java
+org.jsoup.nodes.Attribute.Attribute	2	String	String	
+/**	     * Create a new attribute from unencoded (raw) key and value.	     * @param key attribute key	     * @param value attribute value	     * @see #createFromEncoded	     */	    public Attribute(String key, String value) {	        Validate.notEmpty(key);	        Validate.notNull(value);	        this.key = key.trim().toLowerCase();	        this.value = value;	    }	
+
+org.jsoup.nodes.Attribute.getKey	0	
+/**	     Get the attribute key.	     @return the attribute key	     */	    public String getKey() {	        return key;	    }	
+
+org.jsoup.nodes.Attribute.setKey	1	String	
+/**	     Set the attribute key. Gets normalised as per the constructor method.	     @param key the new key; must not be null	     */	    public void setKey(String key) {	        Validate.notEmpty(key);	        this.key = key.trim().toLowerCase();	    }	
+
+org.jsoup.nodes.Attribute.getValue	0	
+/**	     Get the attribute value.	     @return the attribute value	     */	    public String getValue() {	        return value;	    }	
+
+org.jsoup.nodes.Attribute.setValue	1	String	
+/**	     Set the attribute value.	     @param value the new attribute value; must not be null	     */	    public void setValue(String value) {	        Validate.notNull(value);	        this.value = value;	    }	
+
+org.jsoup.nodes.Attribute.html	0	
+/**	     Get the HTML representation of this attribute; e.g. {@code href="index.html"}.	     @return HTML	     */	    public String html() {	        return String.format("%s=\"%s\"", key, StringEscapeUtils.escapeHtml(value));	    }	
+
+org.jsoup.nodes.Attribute.toString	0	
+/**	     Get the string representation of this attribute, implemented as {@link #html()}.	     @return string	     */	    public String toString() {	        return html();	    }	
+
+org.jsoup.nodes.Attribute.createFromEncoded	2	String	String	
+/**	     * Create a new Attribute from an unencoded key and a HMTL attribute encoded value.	     * @param unencodedKey assumes the key is not encoded, as can be only run of simple \w chars.	     * @param encodedValue HTML attribute encoded value	     * @return attribute	     */	    public static Attribute createFromEncoded(String unencodedKey, String encodedValue) {	        String value = StringEscapeUtils.unescapeHtml(encodedValue);	        return new Attribute(unencodedKey, value);	    }	
+
+org.jsoup.nodes.Attribute.equals	1	Object	
+@Override	    public boolean equals(Object o) {	        if (this == o) return true;	        if (!(o instanceof Attribute)) return false;		        Attribute attribute = (Attribute) o;		        if (key != null ? !key.equals(attribute.key) : attribute.key != null) return false;	        if (value != null ? !value.equals(attribute.value) : attribute.value != null) return false;		        return true;	    }	
+
+org.jsoup.nodes.Attribute.hashCode	0	
+@Override	    public int hashCode() {	        int result = key != null ? key.hashCode() : 0;	        result = 31 * result + (value != null ? value.hashCode() : 0);	        return result;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Comment.java
+org.jsoup.nodes.Comment.Comment	2	String	String	
+/**	     Create a new comment node.	     @param data The contents of the comment	     @param baseUri base URI	     */	    public Comment(String data, String baseUri) {	        super(baseUri);	        attributes.put(COMMENT_KEY, data);	    }	
+
+org.jsoup.nodes.Comment.nodeName	0	
+public String nodeName() {	        return "#comment";	    }	
+
+org.jsoup.nodes.Comment.getData	0	
+/**	     Get the contents of the comment.	     @return comment content	     */	    public String getData() {	        return attributes.get(COMMENT_KEY);	    }	
+
+org.jsoup.nodes.Comment.outerHtml	1	StringBuilder	
+void outerHtml(StringBuilder accum) {	        indent(accum);	        accum.append(String.format("<!--%s-->", getData()));	    }	
+
+org.jsoup.nodes.Comment.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/Node.java
+org.jsoup.nodes.Node.Node	2	String	Attributes	
+/**	     Create a new Node.	     @param baseUri base URI	     @param attributes attributes (not null, but may be empty)	     */	    protected Node(String baseUri, Attributes attributes) {	        Validate.notNull(baseUri);	        Validate.notNull(attributes);	        	        childNodes = new ArrayList<Node>();	        this.baseUri = baseUri.trim();	        this.attributes = attributes;	    }	
+
+org.jsoup.nodes.Node.Node	1	String	
+protected Node(String baseUri) {	        this(baseUri, new Attributes());	    }	
+
+org.jsoup.nodes.Node.attr	1	String	
+/**	     * Get an attribute's value by its key.	     * <p/>	     * To get an absolute URL from an attribute that may be a relative URL, prefix the key with <code><b>abs</b></code>,	     * which is a shortcut to the {@link #absUrl} method.	     * E.g.: <blockquote><code>String url = a.attr("abs:href");</code></blockquote>	     * @param attributeKey The attribute key.	     * @return The attribute, or empty string if not present (to avoid nulls).	     * @see #attributes()	     * @see #hasAttr(String)	     * @see #absUrl(String)	     */	    public String attr(String attributeKey) {	        Validate.notNull(attributeKey);		        if (hasAttr(attributeKey))	            return attributes.get(attributeKey);	        else if (attributeKey.toLowerCase().startsWith("abs:"))	            return absUrl(attributeKey.substring("abs:".length()));	        else return "";	    }	
+
+org.jsoup.nodes.Node.attributes	0	
+/**	     * Get all of the element's attributes.	     * @return attributes (which implements iterable, in same order as presented in original HTML).	     */	    public Attributes attributes() {	        return attributes;	    }	
+
+org.jsoup.nodes.Node.attr	2	String	String	
+/**	     * Set an attribute (key=value). If the attribute already exists, it is replaced.	     * @param attributeKey The attribute key.	     * @param attributeValue The attribute value.	     * @return this (for chaining)	     */	    public Node attr(String attributeKey, String attributeValue) {	        attributes.put(attributeKey, attributeValue);	        return this;	    }	
+
+org.jsoup.nodes.Node.hasAttr	1	String	
+/**	     * Test if this element has an attribute.	     * @param attributeKey The attribute key to check.	     * @return true if the attribute exists, false if not.	     */	    public boolean hasAttr(String attributeKey) {	        Validate.notNull(attributeKey);	        return attributes.hasKey(attributeKey);	    }	
+
+org.jsoup.nodes.Node.removeAttr	1	String	
+/**	     * Remove an attribute from this element.	     * @param attributeKey The attribute to remove.	     * @return this (for chaining)	     */	    public Node removeAttr(String attributeKey) {	        Validate.notNull(attributeKey);	        attributes.remove(attributeKey);	        return this;	    }	
+
+org.jsoup.nodes.Node.baseUri	0	
+/**	     Get the base URI of this node.	     @return base URI	     */	    public String baseUri() {	        return baseUri;	    }	
+
+org.jsoup.nodes.Node.setBaseUri	1	String	
+/**	     Update the base URI of this node.	     @param baseUri base URI to set	     */	    public void setBaseUri(String baseUri) {	        Validate.notNull(baseUri);	        this.baseUri = baseUri;	    }	
+
+org.jsoup.nodes.Node.absUrl	1	String	
+/**	     * Get an absolute URL from a URL attribute that may be relative (i.e. an <code>&lt;a href></code> or	     * <code>&lt;img src></code>.	     * <p/>	     * If the attribute value is already absolute (i.e. it starts with a protocol, like	     * <code>http://</code> or <code>https://</code> etc), and it successfully parses as a URL, the attribute is	     * returned directly. Otherwise, it is treated as a URL relative to the element's {@link #baseUri}, and made	     * absolute using that.	     * <p/>	     * As an alternate, you can use the {@link #attr} method with the <code>abs:</code> prefix.	     *	     * @param attributeKey The attribute key	     * @return An absolute URL if one could be made, or an empty string (not null) if the attribute was missing or	     * could not be made successfully into a URL.	     * @see #attr	     * @see java.net.URL#URL(java.net.URL, String)	     */	    public String absUrl(String attributeKey) {	        Validate.notEmpty(attributeKey);		        String relUrl = attr(attributeKey);	        if (!hasAttr(attributeKey)) {	            return ""; // nothing to make absolute with	        } else {	            URL base;	            try {	                try {	                    base = new URL(baseUri);	                } catch (MalformedURLException e) {	                    // the base is unsuitable, but the attribute may be abs on its own, so try that	                    URL abs = new URL(relUrl);	                    return abs.toExternalForm();	                }	                URL abs = new URL(base, relUrl);	                return abs.toExternalForm();	            } catch (MalformedURLException e) {	                return "";	            }	        }	    }	
+
+org.jsoup.nodes.Node.childNode	1	int	
+/**	     Get a child node by index	     @param index index of child node	     @return the child node at this index.	     */	    public Node childNode(int index) {	        return childNodes.get(index);	    }	
+
+org.jsoup.nodes.Node.childNodes	0	
+/**	     Get this node's children. Presented as an unmodifiable list: new children can not be added, but the child nodes	     themselves can be manipulated.	     @return list of children. If no children, returns an empty list.	     */	    public List<Node> childNodes() {	        return Collections.unmodifiableList(childNodes);	    }	
+
+org.jsoup.nodes.Node.parent	0	
+/**	     Gets this node's parent node.	     @return parent node; or null if no parent.	     */	    public Node parent() {	        return parentNode;	    }	
+
+org.jsoup.nodes.Node.remove	0	
+/**	     * Remove (delete) this node from the DOM tree. If this node has children, they are also removed.	     */	    public void remove() {	        Validate.notNull(parentNode);	        parentNode.removeChild(this);	    }	
+
+org.jsoup.nodes.Node.replaceWith	1	Node	
+/**	     * Replace this node in the DOM with the supplied node.	     * @param in the node that will will replace the existing node.	     */	    public void replaceWith(Node in) {	        Validate.notNull(in);	        Validate.notNull(parentNode);	        parentNode.replaceChild(this, in);	    }	
+
+org.jsoup.nodes.Node.setParentNode	1	Node	
+protected void setParentNode(Node parentNode) {	        if (this.parentNode != null)	            throw new NotImplementedException("Cannot (yet) move nodes in tree"); // TODO: remove from prev node children	        this.parentNode = parentNode;	    }	
+
+org.jsoup.nodes.Node.replaceChild	2	Node	Node	
+protected void replaceChild(Node out, Node in) {	        Validate.isTrue(out.parentNode == this);	        Validate.notNull(in);	        if (in.parentNode != null)	            in.parentNode.removeChild(in);	        	        Integer index = indexInList(out, childNodes);	        childNodes.set(index, in);	        in.parentNode = this;	        out.parentNode = null;	    }	
+
+org.jsoup.nodes.Node.removeChild	1	Node	
+protected void removeChild(Node out) {	        Validate.isTrue(out.parentNode == this);	        int index = indexInList(out, childNodes);	        childNodes.remove(index);	        out.parentNode = null;	    }	
+
+org.jsoup.nodes.Node.addChild	1	Node	
+protected void addChild(Node in) {	        Validate.notNull(in);	        if (in.parentNode != null)	            in.parentNode.removeChild(in);	        	        childNodes.add(in);	        in.parentNode = this;	    }	
+
+org.jsoup.nodes.Node.nodeDepth	0	
+protected int nodeDepth() {	        if (parentNode == null)	            return 0;	        else	            return parentNode.nodeDepth() + 1;	    }	
+
+org.jsoup.nodes.Node.siblingNodes	0	
+/**	     Retrieves this node's sibling nodes. Effectively, {@link #childNodes()  node.parent.childNodes()}.	     @return node siblings, including this node	     */	    public List<Node> siblingNodes() {	        return parent().childNodes(); // TODO: should this strip out this node? i.e. not a sibling of self?	    }	
+
+org.jsoup.nodes.Node.nextSibling	0	
+/**	     Get this node's next sibling.	     @return next sibling, or null if this is the last sibling	     */	    public Node nextSibling() {	        List<Node> siblings = parentNode.childNodes;	        Integer index = indexInList(this, siblings);	        Validate.notNull(index);	        if (siblings.size() > index+1)	            return siblings.get(index+1);	        else	            return null;	    }	
+
+org.jsoup.nodes.Node.previousSibling	0	
+/**	     Get this node's previous sibling.	     @return the previous sibling, or null if this is the first sibling	     */	    public Node previousSibling() {	        List<Node> siblings = parentNode.childNodes;	        Integer index = indexInList(this, siblings);	        Validate.notNull(index);	        if (index > 0)	            return siblings.get(index-1);	        else	            return null;	    }	
+
+org.jsoup.nodes.Node.siblingIndex	0	
+/**	     * Get the list index of this node in its node sibling list. I.e. if this is the first node	     * sibling, returns 0.	     * @return position in node sibling list	     * @see org.jsoup.nodes.Element#elementSiblingIndex()	     */	    public Integer siblingIndex() {	        return indexInList(this, parent().childNodes);	    }	
+
+org.jsoup.nodes.Node.indexInList	2	N	List<N>	
+protected static <N extends Node> Integer indexInList(N search, List<N> nodes) {	        Validate.notNull(search);	        Validate.notNull(nodes);		        for (int i = 0; i < nodes.size(); i++) {	            N node = nodes.get(i);	            if (node.equals(search))	                return i;	        }	        return null;	    }	
+
+org.jsoup.nodes.Node.outerHtml	0	
+/**	     Get the outer HTML of this node.	     @return HTML	     */	    public String outerHtml() {	        StringBuilder accum = new StringBuilder();	        outerHtml(accum);	        return accum.toString();	    }	
+
+org.jsoup.nodes.Node.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+org.jsoup.nodes.Node.indent	1	StringBuilder	
+protected void indent(StringBuilder accum) {	        accum.append("\n").append(StringUtils.leftPad("", nodeDepth() -1 * 2));	    }	
+
+org.jsoup.nodes.Node.equals	1	Object	
+@Override	    public boolean equals(Object o) {	        if (this == o) return true;	        // todo: have nodes hold a child index, compare against that and parent (not children)	        return false;	    }	
+
+org.jsoup.nodes.Node.hashCode	0	
+@Override	    public int hashCode() {	        int result = parentNode != null ? parentNode.hashCode() : 0;	        // not children, or will block stack as they go back up to parent)	        result = 31 * result + (attributes != null ? attributes.hashCode() : 0);	        return result;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/XmlDeclaration.java
+org.jsoup.nodes.XmlDeclaration.XmlDeclaration	3	String	String	boolean	
+/**	     Create a new XML declaration	     @param data data	     @param baseUri base uri	     @param isProcessingInstruction is processing instruction	     */	    public XmlDeclaration(String data, String baseUri, boolean isProcessingInstruction) {	        super(baseUri);	        attributes.put(DECL_KEY, data);	        this.isProcessingInstruction = isProcessingInstruction;	    }	
+
+org.jsoup.nodes.XmlDeclaration.nodeName	0	
+public String nodeName() {	        return "#declaration";	    }	
+
+org.jsoup.nodes.XmlDeclaration.getWholeDeclaration	0	
+/**	     Get the unencoded XML declaration.	     @return XML declaration	     */	    public String getWholeDeclaration() {	        return attributes.get(DECL_KEY);	    }	
+
+org.jsoup.nodes.XmlDeclaration.outerHtml	1	StringBuilder	
+void outerHtml(StringBuilder accum) {	        accum.append(String.format("<%s%s>", isProcessingInstruction ? "!" : "?", getWholeDeclaration()));	    }	
+
+org.jsoup.nodes.XmlDeclaration.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/TextNode.java
+org.jsoup.nodes.TextNode.TextNode	2	String	String	
+/**	     Create a new TextNode representing the supplied (unencoded) text).		     @param text raw text	     @param baseUri base uri	     @see #createFromEncoded(String, String)	     */	    public TextNode(String text, String baseUri) {	        super(baseUri);	        attributes.put(TEXT_KEY, text);	    }	
+
+org.jsoup.nodes.TextNode.nodeName	0	
+public String nodeName() {	        return "#text";	    }	
+
+org.jsoup.nodes.TextNode.text	0	
+/**	     * Get the text content of this text node.	     * @return Unencoded, normalised text.	     * @see TextNode#getWholeText()	     */	    public String text() {	        return outerHtml();	    }	
+
+org.jsoup.nodes.TextNode.text	1	String	
+/**	     * Set the text content of this text node.	     * @param text unencoded text	     * @return this, for chaining	     */	    public TextNode text(String text) {	        attributes.put(TEXT_KEY, text);	        return this;	    }	
+
+org.jsoup.nodes.TextNode.getWholeText	0	
+/**	     Get the (unencoded) text of this text node, including any newlines and spaces present in the original.	     @return text	     */	    public String getWholeText() {	        return attributes.get(TEXT_KEY);	    }	
+
+org.jsoup.nodes.TextNode.isBlank	0	
+/**	     Test if this text node is blank -- that is, empty or only whitespace (including newlines).	     @return true if this document is empty or only whitespace, false if it contains any text content.	     */	    public boolean isBlank() {	        return StringUtils.isBlank(normaliseWhitespace(getWholeText()));	    }	
+
+org.jsoup.nodes.TextNode.outerHtml	1	StringBuilder	
+void outerHtml(StringBuilder accum) {	        String html = StringEscapeUtils.escapeHtml(getWholeText());	        if (parent() instanceof Element && !((Element) parent()).preserveWhitespace()) {	            html = normaliseWhitespace(html);	        }		        if (!isBlank() && parentNode instanceof Element && ((Element) parentNode).tag().canContainBlock()  && siblingIndex() == 0)	            indent(accum);	        accum.append(html);	    }	
+
+org.jsoup.nodes.TextNode.toString	0	
+public String toString() {	        return outerHtml();	    }	
+
+org.jsoup.nodes.TextNode.createFromEncoded	2	String	String	
+/**	     * Create a new TextNode from HTML encoded (aka escaped) data.	     * @param encodedText Text containing encoded HTML (e.g. &amp;lt;)	     * @return TextNode containing unencoded data (e.g. &lt;)	     */	    public static TextNode createFromEncoded(String encodedText, String baseUri) {	        String text = StringEscapeUtils.unescapeHtml(encodedText);	        return new TextNode(text, baseUri);	    }	
+
+org.jsoup.nodes.TextNode.normaliseWhitespace	1	String	
+static String normaliseWhitespace(String text) {	        text = text.replaceAll("\\s{2,}|(\\r\\n|\\r|\\n)", " "); // more than one space, and newlines to " "	        return text;	    }	
+
+org.jsoup.nodes.TextNode.stripLeadingWhitespace	1	String	
+static String stripLeadingWhitespace(String text) {	        return text.replaceFirst("^\\s+", "");	    }	
+
+org.jsoup.nodes.TextNode.lastCharIsWhitespace	1	StringBuilder	
+static boolean lastCharIsWhitespace(StringBuilder sb) {	        if (sb.length() == 0)	            return false;	        String lastChar = sb.substring(sb.length()-1, sb.length());	        Validate.isTrue(lastChar.length() == 1); // todo: remove check	        return lastChar.equals(" ");	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/nodes/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/parser/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/parser/Tag.java
+org.jsoup.parser.Tag.Tag	1	String	
+private Tag(String tagName) {	        this.tagName = tagName.toLowerCase();	    }	
+
+org.jsoup.parser.Tag.getName	0	
+public String getName() {	        return tagName;	    }	
+
+org.jsoup.parser.Tag.valueOf	1	String	
+/**	     Get a Tag by name. If not previously defined (unknown), returns a new generic tag, that can do anything.	     <p>	     Pre-defined tags (P, DIV etc) will be ==, but unknown tags are not registered and will only .equals().	     @param tagName Name of tag, e.g. "p". Case insensitive.	     @return The tag, either defined or new generic.	     */	    public static Tag valueOf(String tagName) {	        Validate.notNull(tagName);	        tagName = tagName.trim().toLowerCase();	        Validate.notEmpty(tagName);		        synchronized (tags) {	            Tag tag = tags.get(tagName);	            if (tag == null) {	                // not defined: create default; go anywhere, do anything! (incl be inside a <p>)	                tag = new Tag(tagName);	                tag.setAncestor(defaultAncestor.tagName);	                tag.isBlock = false;	                tag.canContainBlock = true;	            }	            return tag;	        }	    }	
+
+org.jsoup.parser.Tag.canContain	1	Tag	
+/**	     Test if this tag, the prospective parent, can accept the proposed child.	     @param child potential child tag.	     @return true if this can contain child.	     */	    boolean canContain(Tag child) {	        Validate.notNull(child);		        if (child.isBlock && !this.canContainBlock)	            return false;		        if (!child.isBlock && !this.canContainInline) // not block == inline	            return false;		        if (this.optionalClosing && this.equals(child))	            return false;		        if (this.empty || this.isData())	            return false;		        // head can only contain a few. if more than head in here, modify to have a list of valids	        // TODO: (could solve this with walk for ancestor)	        if (this.tagName.equals("head")) {	            if (child.tagName.equals("base") || child.tagName.equals("script") || child.tagName.equals("noscript") || child.tagName.equals("link") ||	                    child.tagName.equals("meta") || child.tagName.equals("title") || child.tagName.equals("style") || child.tagName.equals("object")) {	                return true;	            }	            return false;	        }	        	        // dt and dd (in dl)	        if (this.tagName.equals("dt") && child.tagName.equals("dd"))	            return false;	        if (this.tagName.equals("dd") && child.tagName.equals("dt"))	            return false;		        return true;	    }	
+
+org.jsoup.parser.Tag.isBlock	0	
+/**	     Gets if this is a block tag.	     @return if block tag	     */	    public boolean isBlock() {	        return isBlock;	    }	
+
+org.jsoup.parser.Tag.canContainBlock	0	
+/**	     Gets if this tag can contain block tags.	     @return if tag can contain block tags	     */	    public boolean canContainBlock() {	        return canContainBlock;	    }	
+
+org.jsoup.parser.Tag.isInline	0	
+/**	     Gets if this tag is an inline tag.	     @return if this tag is an inline tag.	     */	    public boolean isInline() {	        return !isBlock;	    }	
+
+org.jsoup.parser.Tag.isData	0	
+/**	     Gets if this tag is a data only tag.	     @return if this tag is a data only tag	     */	    public boolean isData() {	        return !canContainInline && !isEmpty();	    }	
+
+org.jsoup.parser.Tag.isEmpty	0	
+/**	     Get if this is an empty tag	     @return if this is an emtpy tag	     */	    public boolean isEmpty() {	        return empty;	    }	
+
+org.jsoup.parser.Tag.preserveWhitespace	0	
+/**	     Get if this tag should preserve whitespace within child text nodes.	     @return if preserve whitepace	     */	    public boolean preserveWhitespace() {	        return preserveWhitespace;	    }	
+
+org.jsoup.parser.Tag.getImplicitParent	0	
+Tag getImplicitParent() {	        return (!ancestors.isEmpty()) ? ancestors.get(0) : null;	    }	
+
+org.jsoup.parser.Tag.isValidParent	1	Tag	
+boolean isValidParent(Tag child) {	        if (child.ancestors.isEmpty())	            return true; // HTML tag		        for (Tag tag : child.ancestors) {	            if (this.equals(tag))	                return true;	        }	        return false;	    }	
+
+org.jsoup.parser.Tag.equals	1	Object	
+@Override	    public boolean equals(Object o) {	        if (this == o) return true;	        if (o == null || getClass() != o.getClass()) return false;		        Tag tag = (Tag) o;		        if (canContainBlock != tag.canContainBlock) return false;	        if (canContainInline != tag.canContainInline) return false;	        if (empty != tag.empty) return false;	        if (isBlock != tag.isBlock) return false;	        if (optionalClosing != tag.optionalClosing) return false;	        if (tagName != null ? !tagName.equals(tag.tagName) : tag.tagName != null) return false;		        return true;	    }	
+
+org.jsoup.parser.Tag.hashCode	0	
+@Override	    public int hashCode() {	        int result = tagName != null ? tagName.hashCode() : 0;	        result = 31 * result + (isBlock ? 1 : 0);	        result = 31 * result + (canContainBlock ? 1 : 0);	        result = 31 * result + (canContainInline ? 1 : 0);	        result = 31 * result + (optionalClosing ? 1 : 0);	        result = 31 * result + (empty ? 1 : 0);	        return result;	    }	
+
+org.jsoup.parser.Tag.toString	0	
+public String toString() {	        return tagName;	    }	
+
+org.jsoup.parser.Tag.createBlock	1	String	
+private static Tag createBlock(String tagName) {	        return register(new Tag(tagName));	    }	
+
+org.jsoup.parser.Tag.createInline	1	String	
+private static Tag createInline(String tagName) {	        Tag inline = new Tag(tagName);	        inline.isBlock = false;	        inline.canContainBlock = false;	        return register(inline);	    }	
+
+org.jsoup.parser.Tag.register	1	Tag	
+private static Tag register(Tag tag) {	        tag.setAncestor(defaultAncestor.tagName);	        synchronized (tags) {	            tags.put(tag.tagName, tag);	        }	        return tag;	    }	
+
+org.jsoup.parser.Tag.setContainInlineOnly	0	
+private Tag setContainInlineOnly() {	        canContainBlock = false;	        canContainInline = true;	        return this;	    }	
+
+org.jsoup.parser.Tag.setContainDataOnly	0	
+private Tag setContainDataOnly() {	        canContainBlock = false;	        canContainInline = false;	        preserveWhitespace = true;	        return this;	    }	
+
+org.jsoup.parser.Tag.setEmpty	0	
+private Tag setEmpty() {	        canContainBlock = false;	        canContainInline = false;	        empty = true;	        return this;	    }	
+
+org.jsoup.parser.Tag.setOptionalClosing	0	
+private Tag setOptionalClosing() {	        optionalClosing = true;	        return this;	    }	
+
+org.jsoup.parser.Tag.setPreserveWhitespace	0	
+private Tag setPreserveWhitespace() {	        preserveWhitespace = true;	        return this;	    }	
+
+org.jsoup.parser.Tag.setAncestor	1	String	
+private Tag setAncestor(String... tagNames) {	        if (tagNames == null) {	            ancestors = Collections.emptyList();	        } else {	            ancestors = new ArrayList<Tag>(tagNames.length);	            for (String name : tagNames) {	                ancestors.add(Tag.valueOf(name));	            }	        }	        return this;	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/parser/Parser.java
+org.jsoup.parser.Parser.Parser	3	String	String	boolean	
+private Parser(String html, String baseUri, boolean isBodyFragment) {	        Validate.notNull(html);	        Validate.notNull(baseUri);		        stack = new LinkedList<Element>();	        tq = new TokenQueue(html);	        this.baseUri = baseUri;		        if (isBodyFragment) {	            doc = Document.createShell(baseUri);	            stack.add(doc.body());	        } else {	            doc = new Document(baseUri);	            stack.add(doc);	        }	    }	
+
+org.jsoup.parser.Parser.parse	2	String	String	
+/**	     Parse HTML into a Document.	     @param html HTML to parse	     @param baseUri base URI of document (i.e. original fetch location), for resolving relative URLs.	     @return parsed Document	     */	    public static Document parse(String html, String baseUri) {	        Parser parser = new Parser(html, baseUri, false);	        return parser.parse();	    }	
+
+org.jsoup.parser.Parser.parseBodyFragment	2	String	String	
+/**	     Parse a fragment of HTML into the {@code body} of a Document.	     @param bodyHtml fragment of HTML	     @param baseUri base URI of document (i.e. original fetch location), for resolving relative URLs.	     @return Document, with empty head, and HTML parsed into body	     */	    public static Document parseBodyFragment(String bodyHtml, String baseUri) {	        Parser parser = new Parser(bodyHtml, baseUri, true);	        return parser.parse();	    }	
+
+org.jsoup.parser.Parser.parse	0	
+private Document parse() {	        while (!tq.isEmpty()) {	            if (tq.matches("<!--")) {	                parseComment();	            } else if (tq.matches("<![CDATA[")) {	                parseCdata();	            } else if (tq.matches("<?") || tq.matches("<!")) {	                parseXmlDecl();	            } else if (tq.matches("</")) {	                parseEndTag();	            } else if (tq.matches("<")) {	                parseStartTag();	            } else {	                parseTextNode();	            }	        }	        return doc.normalise();	    }	
+
+org.jsoup.parser.Parser.parseComment	0	
+private void parseComment() {	        tq.consume("<!--");	        String data = tq.chompTo("->");		        if (data.endsWith("-")) // i.e. was -->	            data = data.substring(0, data.length()-1);	        Comment comment = new Comment(data, baseUri);	        last().appendChild(comment);	    }	
+
+org.jsoup.parser.Parser.parseXmlDecl	0	
+private void parseXmlDecl() {	        tq.consume("<");	        Character firstChar = tq.consume(); // <? or <!, from initial match.	        boolean procInstr = firstChar.toString().equals("!");	        String data = tq.chompTo(">");		        XmlDeclaration decl = new XmlDeclaration(data, baseUri, procInstr);	        last().appendChild(decl);	    }	
+
+org.jsoup.parser.Parser.parseEndTag	0	
+private void parseEndTag() {	        tq.consume("</");	        String tagName = tq.consumeWord();	        tq.chompTo(">");		        if (tagName.length() != 0) {	            Tag tag = Tag.valueOf(tagName);	            popStackToClose(tag);	        }	    }	
+
+org.jsoup.parser.Parser.parseStartTag	0	
+private void parseStartTag() {	        tq.consume("<");	        String tagName = tq.consumeWord();		        if (tagName.length() == 0) { // doesn't look like a start tag after all; put < back on stack and handle as text	            tq.addFirst("&lt;");	            parseTextNode();	            return;	        }		        Attributes attributes = new Attributes();	        while (!tq.matchesAny("<", "/>", ">") && !tq.isEmpty()) {	            Attribute attribute = parseAttribute();	            if (attribute != null)	                attributes.put(attribute);	        }		        Tag tag = Tag.valueOf(tagName);	        Element child = new Element(tag, baseUri, attributes);		        boolean isEmptyElement = tag.isEmpty(); // empty element if empty tag (e.g. img) or self-closed el (<div/>	        if (tq.matchChomp("/>")) { // close empty element or tag	            isEmptyElement = true;	        } else {	            tq.matchChomp(">");	        }		        // pc data only tags (textarea, script): chomp to end tag, add content as text node	        if (tag.isData()) {	            String data = tq.chompTo("</" + tagName);	            tq.chompTo(">");	            	            Node dataNode;	            if (tag.equals(titleTag) || tag.equals(textareaTag)) // want to show as text, but not contain inside tags (so not a data tag?)	                dataNode = TextNode.createFromEncoded(data, baseUri);	            else	                dataNode = new DataNode(data, baseUri); // data not encoded but raw (for " in script)	            child.appendChild(dataNode);   	        }		        // <base href>: update the base uri	        if (child.tagName().equals("base")) {	            String href = child.absUrl("href");	            if (href.length() != 0) { // ignore <base target> etc	                baseUri = href;	                doc.setBaseUri(href); // set on the doc so doc.createElement(Tag) will get updated base	            }	        }		        addChildToParent(child, isEmptyElement);	    }	
+
+org.jsoup.parser.Parser.parseAttribute	0	
+private Attribute parseAttribute() {	        tq.consumeWhitespace();	        String key = tq.consumeAttributeKey();	        String value = "";	        tq.consumeWhitespace();	        if (tq.matchChomp("=")) {	            tq.consumeWhitespace();		            if (tq.matchChomp(SQ)) {	                value = tq.chompTo(SQ);	            } else if (tq.matchChomp(DQ)) {	                value = tq.chompTo(DQ);	            } else {	                StringBuilder valueAccum = new StringBuilder();	                // no ' or " to look for, so scan to end tag or space (or end of stream)	                while (!tq.matchesAny("<", "/>", ">") && !tq.matchesWhitespace() && !tq.isEmpty()) {	                    valueAccum.append(tq.consume());	                }	                value = valueAccum.toString();	            }	            tq.consumeWhitespace();	        }	        if (key.length() != 0)	            return Attribute.createFromEncoded(key, value);	        else {	            tq.consume(); // unknown char, keep popping so not get stuck	            return null;	        }	    }	
+
+org.jsoup.parser.Parser.parseTextNode	0	
+private void parseTextNode() {	        String text = tq.consumeTo("<");	        TextNode textNode = TextNode.createFromEncoded(text, baseUri);	        last().appendChild(textNode);	    }	
+
+org.jsoup.parser.Parser.parseCdata	0	
+private void parseCdata() {	        tq.consume("<![CDATA[");	        String rawText = tq.chompTo("]]>");	        TextNode textNode = new TextNode(rawText, baseUri); // constructor does not escape	        last().appendChild(textNode);	    }	
+
+org.jsoup.parser.Parser.addChildToParent	2	Element	boolean	
+private Element addChildToParent(Element child, boolean isEmptyElement) {	        Element parent = popStackToSuitableContainer(child.tag());	        Tag childTag = child.tag();	        boolean validAncestor = stackHasValidParent(childTag);		        if (!validAncestor) {	            // create implicit parent around this child	            Tag parentTag = childTag.getImplicitParent();	            Element implicit = new Element(parentTag, baseUri);	            // special case: make sure there's a head before putting in body	            if (child.tag().equals(bodyTag)) {	                Element head = new Element(headTag, baseUri);	                implicit.appendChild(head);	            }	            implicit.appendChild(child);		            // recurse to ensure somewhere to put parent	            Element root = addChildToParent(implicit, false);	            if (!isEmptyElement)	                stack.addLast(child);	            return root;	        }		        parent.appendChild(child);		        if (!isEmptyElement)	            stack.addLast(child);	        return parent;	    }	
+
+org.jsoup.parser.Parser.stackHasValidParent	1	Tag	
+private boolean stackHasValidParent(Tag childTag) {	        if (stack.size() == 1 && childTag.equals(htmlTag))	            return true; // root is valid for html node	        	        for (int i = stack.size() -1; i >= 0; i--) {	            Element el = stack.get(i);	            Tag parent2 = el.tag();	            if (parent2.isValidParent(childTag)) {	                return true;	            }	        }	        return false;	    }	
+
+org.jsoup.parser.Parser.popStackToSuitableContainer	1	Tag	
+private Element popStackToSuitableContainer(Tag tag) {	        while (!stack.isEmpty()) {	            if (last().tag().canContain(tag))	                return last();	            else	                stack.removeLast();	        }	        return null;	    }	
+
+org.jsoup.parser.Parser.popStackToClose	1	Tag	
+private Element popStackToClose(Tag tag) {	        // first check to see if stack contains this tag; if so pop to there, otherwise ignore	        int counter = 0;	        Element elToClose = null;	        for (int i = stack.size() -1; i > 0; i--) {	            counter++;	            Element el = stack.get(i);	            Tag elTag = el.tag();	            if (elTag.equals(bodyTag) || elTag.equals(htmlTag)) { // once in body, don't close past body	                break;	            } else if (elTag.equals(tag)) {	                elToClose = el;	                break;	            }	        }	        if (elToClose != null) {	            for (int i = 0; i < counter; i++) {	                stack.removeLast();	            }	        }	        return elToClose;	    }	
+
+org.jsoup.parser.Parser.last	0	
+private Element last() {	        return stack.getLast();	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/parser/TokenQueue.java
+org.jsoup.parser.TokenQueue.TokenQueue	1	String	
+/**	     Create a new TokenQueue.	     @param data string of data to back queue.	     */	    public TokenQueue(String data) {	        Validate.notNull(data);		        queue = new LinkedList<Character>();	        char[] chars = data.toCharArray();	        for (char c : chars) {	            queue.add(c);	        }	    }	
+
+org.jsoup.parser.TokenQueue.isEmpty	0	
+/**	     * Is the queue empty?	     * @return true if no data left in queue.	     */	    public boolean isEmpty() {	        return queue.isEmpty();	    }	
+
+org.jsoup.parser.TokenQueue.peek	0	
+/**	     * Retrieves but does not remove the first characater from the queue.	     * @return First character, or null if empty.	     */	    public Character peek() {	        return queue.peek();	    }	
+
+org.jsoup.parser.TokenQueue.addFirst	1	Character	
+/**	     Add a character to the start of the queue (will be the next character retrieved).	     @param c character to add	     */	    public void addFirst(Character c) {	        queue.addFirst(c);	    }	
+
+org.jsoup.parser.TokenQueue.addFirst	1	String	
+/**	     Add a string to the start of the queue.	     @param seq string to add.	     */	    public void addFirst(String seq) {	        char[] chars = seq.toCharArray();	        for (int i = chars.length - 1; i >= 0; i--) {	            addFirst(chars[i]);	        }	    }	
+
+org.jsoup.parser.TokenQueue.matches	1	String	
+/**	     * Tests if the next characters on the queue match the sequence. Case insensitive.	     * @param seq String to check queue for.	     * @return true if the next characters match.	     */	    public boolean matches(String seq) {	        int len = seq.length();	        if (len > queue.size())	            return false;	        List<Character> chars = queue.subList(0, len);	        char[] seqChars = seq.toCharArray();	        for (int i = 0; i < len; i++) {	            Character found = Character.toLowerCase(chars.get(i));	            Character check = Character.toLowerCase(seqChars[i]);	            if (!found.equals(check))	                return false;	        }	        return true;	    }	
+
+org.jsoup.parser.TokenQueue.matchesAny	1	String	
+/**	     Tests if the next characters match any of the sequences.	     @param seq	     @return	     */	    public boolean matchesAny(String... seq) {	        for (String s : seq) {	            if (matches(s))	                return true;	        }	        return false;	    }	
+
+org.jsoup.parser.TokenQueue.matchChomp	1	String	
+/**	     * Tests if the queue matches the sequence (as with match), and if they do, removes the matched string from the	     * queue.	     * @param seq String to search for, and if found, remove from queue.	     * @return true if found and removed, false if not found.	     */	    public boolean matchChomp(String seq) {	        if (matches(seq)) {	            consume(seq);	            return true;	        } else {	            return false;	        }	    }	
+
+org.jsoup.parser.TokenQueue.matchesWhitespace	0	
+/**	     Tests if queue starts with a whitespace character.	     @return if starts with whitespace	     */	    public boolean matchesWhitespace() {	        return !queue.isEmpty() && Character.isWhitespace(queue.peek());	    }	
+
+org.jsoup.parser.TokenQueue.matchesWord	0	
+/**	     Test if the queue matches a word character (letter or digit).	     @return if matches a word character	     */	    public boolean matchesWord() {	        return !queue.isEmpty() && Character.isLetterOrDigit(queue.peek());	    }	
+
+org.jsoup.parser.TokenQueue.consume	0	
+/**	     * Consume one character off queue.	     * @return first character on queue.	     */	    public Character consume() {	        return queue.removeFirst();	    }	
+
+org.jsoup.parser.TokenQueue.consume	1	String	
+/**	     * Consumes the supplied sequence of the queue. If the queue does not start with the supplied sequence, will	     * throw an illegal state exception -- but you should be running match() against that condition.	     <p>	     Case insensitive.	     * @param seq sequence to remove from head of queue.	     */	    public void consume(String seq) {	        if (!matches(seq))	            throw new IllegalStateException("Queue did not match expected sequence");	        int len = seq.length();	        if (len > queue.size())	            throw new IllegalStateException("Queue not long enough to consume sequence");	        for (int i = 0; i < len; i++) {	            consume();	        }	    }	
+
+org.jsoup.parser.TokenQueue.consumeTo	1	String	
+/**	     * Pulls a string off the queue, up to but exclusive of the match sequence, or to the queue running out.	     * @param seq String to end on (and not include in return, but leave on queue)	     * @return The matched data consumed from queue.	     */	    public String consumeTo(String seq) {	        return consumeToAny(seq);	    }	
+
+org.jsoup.parser.TokenQueue.consumeToAny	1	String	
+/**	     Consumes to the first sequence provided, or to the end of the queue. Leaves the terminator on the queue.	     @param seq any number of terminators to consume to	     @return consumed string	     */	    public String consumeToAny(String... seq) {	        StringBuilder accum = new StringBuilder();	        while (!queue.isEmpty() && !matchesAny(seq))	            accum.append(consume());		        return accum.toString();	    }	
+
+org.jsoup.parser.TokenQueue.chompTo	1	String	
+/**	     * Pulls a string off the queue (like consumeTo), and then pulls off the matched string (but does not return it).	     * <p>	     * If the queue runs out of characters before finding the seq, will return as much as it can (and queue will go	     * isEmpty() == true).	     * @param seq String to match up to, and not include in return, and to pull off queue	     * @return Data matched from queue.	     */	    public String chompTo(String seq) {	        String data = consumeTo(seq);	        matchChomp(seq);	        return data;	    }	
+
+org.jsoup.parser.TokenQueue.consumeWhitespace	0	
+/**	     * Pulls the next run of whitespace characters of the queue.	     */	    public boolean consumeWhitespace() {	        boolean seen = false;	        while (!queue.isEmpty() && Character.isWhitespace(queue.peek())) {	            consume();	            seen = true;	        }	        return seen;	    }	
+
+org.jsoup.parser.TokenQueue.consumeWord	0	
+/**	     * Retrieves the next run of word type (letter or digit) off the queue.	     * @return String of word characters from queue, or empty string if none.	     */	    public String consumeWord() {	        StringBuilder wordAccum = new StringBuilder();	        while (!queue.isEmpty() && Character.isLetterOrDigit(queue.peek())) {	            wordAccum.append(queue.removeFirst());	        }	        return wordAccum.toString();	    }	
+
+org.jsoup.parser.TokenQueue.consumeCssIdentifier	0	
+/**	     Consume a CSS identifier (ID or class) off the queue (letter, digit, -, _)	     http://www.w3.org/TR/CSS2/syndata.html#value-def-identifier	     @return identifier	     */	    public String consumeCssIdentifier() {	        StringBuilder accum = new StringBuilder();	        Character c = queue.peek();	        while (!queue.isEmpty() && (Character.isLetterOrDigit(c) || c.equals('-') || c.equals('_'))) {	            accum.append(queue.removeFirst());	            c = queue.peek();	        }	        return accum.toString();	    }	
+
+org.jsoup.parser.TokenQueue.consumeAttributeKey	0	
+/**	     Consume an attribute key off the queue (letter, digit, -, _, :")	     @return attribute key	     */	    public String consumeAttributeKey() {	        StringBuilder accum = new StringBuilder();	        while (!queue.isEmpty() && (Character.isLetterOrDigit(queue.peek()) || matchesAny("-", "_", ":"))) {	            accum.append(queue.removeFirst());	        }	        return accum.toString();	    }	
+
+org.jsoup.parser.TokenQueue.remainder	0	
+/**	     Consume and return whatever is left on the queue.	     @return remained of queue.	     */	    public String remainder() {	        StringBuilder accum = new StringBuilder();	        while (!queue.isEmpty()) {	            accum.append(consume());	        }	        return accum.toString();	    }	
+
+org.jsoup.parser.TokenQueue.toString	0	
+public String toString() {	        return queue.toString();	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/select/Collector.java
+org.jsoup.select.Collector.collect	2	Evaluator	Element	
+/**	     Build a list of elements, by visiting root and every descendant of root, and testing it against the evaluator.	     @param eval Evaluator to test elements against	     @param root root of tree to descend	     @return list of matches; empty if none	     */	    public static Elements collect (Evaluator eval, Element root) {	        Elements elements = new Elements();	        accumulateMatches(eval, elements, root);	        return elements;	    }	
+
+org.jsoup.select.Collector.accumulateMatches	3	Evaluator	List<Element>	Element	
+private static void accumulateMatches(Evaluator eval, List<Element> elements, Element element) {	        if (eval.matches(element))	            elements.add(element);	        for (Element child: element.children())	            accumulateMatches(eval, elements, child);	    }	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/select/Elements.java
+org.jsoup.select.Elements.Elements	0	
+public Elements() {	        contents = new ArrayList<Element>();	    }	
+
+org.jsoup.select.Elements.Elements	1	Collection<Element>	
+public Elements(Collection<Element> elements) {	        contents = new ArrayList<Element>(elements);	    }	
+
+org.jsoup.select.Elements.Elements	1	List<Element>	
+public Elements(List<Element> elements) {	        contents = elements;	    }	
+
+org.jsoup.select.Elements.Elements	1	Element	
+public Elements(Element... elements) {	        this(Arrays.asList(elements));	    }	
+
+org.jsoup.select.Elements.attr	1	String	
+/**	     Get an attribute value from the first matched element that has the attribute.	     @param attributeKey The attribute key.	     @return The attribute value from the first matched element that has the attribute.. If no elements were matched (isEmpty() == true),	     or if the no elements have the attribute, returns empty string.	     @see #hasAttr(String)	     */	    public String attr(String attributeKey) {	        for (Element element : contents) {	            if (element.hasAttr(attributeKey))	                return element.attr(attributeKey);	        }	        return "";	    }	
+
+org.jsoup.select.Elements.hasAttr	1	String	
+/**	     Checks if any of the matched elements have this attribute set.	     @param attributeKey attribute key	     @return true if any of the elements have the attribute; false if none do.	     */	    public boolean hasAttr(String attributeKey) {	        for (Element element : contents) {	            if (element.hasAttr(attributeKey))	                return true;	        }	        return false;	    }	
+
+org.jsoup.select.Elements.attr	2	String	String	
+/**	     * Set an attribute on all matched elements.	     * @param attributeKey attribute key	     * @param attributeValue attribute value	     * @return this	     */	    public Elements attr(String attributeKey, String attributeValue) {	        for (Element element : contents) {	            element.attr(attributeKey, attributeValue);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.removeAttr	1	String	
+/**	     * Remove an attribute from every matched element.	     * @param attributeKey The attribute to remove.	     * @return this (for chaining)	     */	    public Elements removeAttr(String attributeKey) {	        for (Element element : contents) {	            element.removeAttr(attributeKey);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.addClass	1	String	
+/**	     Add the class name to every matched element's {@code class} attribute.	     @param className class name to add	     @return this	     */	    public Elements addClass(String className) {	        for (Element element : contents) {	            element.addClass(className);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.removeClass	1	String	
+/**	     Remove the class name from every matched element's {@code class} attribute, if present.	     @param className class name to remove	     @return this	     */	    public Elements removeClass(String className) {	        for (Element element : contents) {	            element.removeClass(className);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.toggleClass	1	String	
+/**	     Toggle the class name on every matched element's {@code class} attribute.	     @param className class name to add if missing, or remove if present, from every element.	     @return this	     */	    public Elements toggleClass(String className) {	        for (Element element : contents) {	            element.toggleClass(className);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.hasClass	1	String	
+/**	     Determine if any of the matched elements have this class name set in their {@code class} attribute.	     @param className class name to check for	     @return true if any do, false if none do	     */	    public boolean hasClass(String className) {	        for (Element element : contents) {	            if (element.hasClass(className))	                return true;	        }	        return false;	    }	
+
+org.jsoup.select.Elements.val	0	
+/**	     * Get the form element's value of the first matched element.	     * @return The form element's value, or empty if not set.	     * @see Element#val()	     */	    public String val() {	        if (size() > 0)	            return first().val();	        else	            return "";	    }	
+
+org.jsoup.select.Elements.val	1	String	
+/**	     * Set the form element's value in each of the matched elements.	     * @param value The value to set into each matched element	     * @return this (for chaining)	     */	    public Elements val(String value) {	        for (Element element : contents)	            element.val(value);	        return this;	    }	
+
+org.jsoup.select.Elements.text	0	
+/**	     * Get the combined text of all the matched elements.	     * <p>	     * Note that it is possible to get repeats if the matched elements contain both parent elements and their own	     * children, as the Element.text() method returns the combined text of a parent and all its children.	     * @return string of all text: unescaped and no HTML.	     * @see Element#text()	     */	    public String text() {	        StringBuilder sb = new StringBuilder();	        for (Element element : contents) {	            if (sb.length() != 0)	                sb.append(" ");	            sb.append(element.text());	        }	        return sb.toString();	    }	
+
+org.jsoup.select.Elements.hasText	0	
+public boolean hasText() {	        for (Element element: contents) {	            if (element.hasText())	                return true;	        }	        return false;	    }	
+
+org.jsoup.select.Elements.html	0	
+/**	     * Get the combined inner HTML of all matched elements.	     * @return string of all element's inner HTML.	     * @see #text()	     * @see #outerHtml()	     */	    public String html() {	        StringBuilder sb = new StringBuilder();	        for (Element element : contents) {	            if (sb.length() != 0)	                sb.append("\n");	            sb.append(element.html());	        }	        return sb.toString();	    }	
+
+org.jsoup.select.Elements.outerHtml	0	
+/**	     * Get the combined inner HTML of all matched elements.	     * @return string of all element's inner HTML.	     * @see #text()	     * @see #hmtl()	     */	    public String outerHtml() {	        StringBuilder sb = new StringBuilder();	        for (Element element : contents) {	            if (sb.length() != 0)	                sb.append("\n");	            sb.append(element.outerHtml());	        }	        return sb.toString();	    }	
+
+org.jsoup.select.Elements.html	1	String	
+/**	     * Set each matched element's inner HTML.	     * @param html HTML to parse and set into each matched element.	     * @return this, for chaining	     * @see Element#html(String)	     */	    public Elements html(String html) {	        for (Element element : contents) {	            element.html(html);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.prepend	1	String	
+/**	     * Add the supplied HTML to the start of each matched element's inner HTML.	     * @param html HTML to add inside each element, before the existing HTML	     * @return this, for chaining	     * @see Element#prepend(String)	     */	    public Elements prepend(String html) {	        for (Element element : contents) {	            element.prepend(html);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.append	1	String	
+/**	     * Add the supplied HTML to the end of each matched element's inner HTML.	     * @param html HTML to add inside each element, after the existing HTML	     * @return this, for chaining	     * @see Element#append(String)	     */	    public Elements append(String html) {	        for (Element element : contents) {	            element.append(html);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.wrap	1	String	
+/**	     Wrap the supplied HTML around each matched elements. For example, with HTML	     {@code <p><b>This</b> is <b>Jsoup</b></p>},	     <code>doc.select("b").wrap("&lt;i&gt;&lt;/i&gt;");</code>	     becomes {@code <p><i><b>This</b></i> is <i><b>jsoup</b></i></p>}	     @param html HTML to wrap around each element, e.g. {@code <div class="head"></div>}. Can be arbitralily deep.	     @return this (for chaining)	     @see Element#wrap	     */	    public Elements wrap(String html) {	        Validate.notEmpty(html);	        for (Element element : contents) {	            element.wrap(html);	        }	        return this;	    }	
+
+org.jsoup.select.Elements.select	1	String	
+/**	     * Find matching elements within this element list.	     * @param query A selector query	     * @return the filtered list of elements, or an empty list if none match.	     */	    public Elements select(String query) {	        return Selector.select(query, this);	    }	
+
+org.jsoup.select.Elements.eq	1	int	
+/**	     * Reduce the matched elements to one element	     * @param index the (zero-based) index of the element in the list to retain	     * @return Elements containing only the specified element, or, if that element did not exist, an empty list.	     */	    public Elements eq(int index) {	        if (contents.size() > index)	            return new Elements(get(index));	        else	            return new Elements();	    }	
+
+org.jsoup.select.Elements.is	1	String	
+/**	     * Test if any of the matched elements match the supplied query.	     * @param query A selector	     * @return true if at least one element in the list matches the query.	     */	    public boolean is(String query) {	        Elements children = this.select(query);	        return !children.isEmpty();	    }	
+
+org.jsoup.select.Elements.first	0	
+/**	     Get the first matched element.	     @return The first matched element, or <code>null</code> if contents is empty;	     */	    public Element first() {	        return !contents.isEmpty() ? contents.get(0) : null;	    }	
+
+org.jsoup.select.Elements.last	0	
+/**	     Get the last matched element.	     @return The last matched element, or <code>null</code> if contents is empty.	     */	    public Element last() {	        return !contents.isEmpty() ? contents.get(contents.size() - 1) : null;	    }	
+
+org.jsoup.select.Elements.size	0	
+public int size() {return contents.size();}	
+
+org.jsoup.select.Elements.isEmpty	0	
+public boolean isEmpty() {return contents.isEmpty();}	
+
+org.jsoup.select.Elements.contains	1	Object	
+public boolean contains(Object o) {return contents.contains(o);}	
+
+org.jsoup.select.Elements.iterator	0	
+public Iterator<Element> iterator() {return contents.iterator();}	
+
+org.jsoup.select.Elements.toArray	0	
+public Object[] toArray() {return contents.toArray();}	
+
+org.jsoup.select.Elements.toArray	1	T[]	
+public <T> T[] toArray(T[] a) {return contents.toArray(a);}	
+
+org.jsoup.select.Elements.add	1	Element	
+public boolean add(Element element) {return contents.add(element);}	
+
+org.jsoup.select.Elements.remove	1	Object	
+public boolean remove(Object o) {return contents.remove(o);}	
+
+org.jsoup.select.Elements.containsAll	1	Collection<?>	
+public boolean containsAll(Collection<?> c) {return contents.containsAll(c);}	
+
+org.jsoup.select.Elements.addAll	1	Collection<? extends Element>	
+public boolean addAll(Collection<? extends Element> c) {return contents.addAll(c);}	
+
+org.jsoup.select.Elements.addAll	2	int	Collection<? extends Element>	
+public boolean addAll(int index, Collection<? extends Element> c) {return contents.addAll(index, c);}	
+
+org.jsoup.select.Elements.removeAll	1	Collection<?>	
+public boolean removeAll(Collection<?> c) {return contents.removeAll(c);}	
+
+org.jsoup.select.Elements.retainAll	1	Collection<?>	
+public boolean retainAll(Collection<?> c) {return contents.retainAll(c);}	
+
+org.jsoup.select.Elements.clear	0	
+public void clear() {contents.clear();}	
+
+org.jsoup.select.Elements.equals	1	Object	
+public boolean equals(Object o) {return contents.equals(o);}	
+
+org.jsoup.select.Elements.hashCode	0	
+public int hashCode() {return contents.hashCode();}	
+
+org.jsoup.select.Elements.get	1	int	
+public Element get(int index) {return contents.get(index);}	
+
+org.jsoup.select.Elements.set	2	int	Element	
+public Element set(int index, Element element) {return contents.set(index, element);}	
+
+org.jsoup.select.Elements.add	2	int	Element	
+public void add(int index, Element element) {contents.add(index, element);}	
+
+org.jsoup.select.Elements.remove	1	int	
+public Element remove(int index) {return contents.remove(index);}	
+
+org.jsoup.select.Elements.indexOf	1	Object	
+public int indexOf(Object o) {return contents.indexOf(o);}	
+
+org.jsoup.select.Elements.lastIndexOf	1	Object	
+public int lastIndexOf(Object o) {return contents.lastIndexOf(o);}	
+
+org.jsoup.select.Elements.listIterator	0	
+public ListIterator<Element> listIterator() {return contents.listIterator();}	
+
+org.jsoup.select.Elements.listIterator	1	int	
+public ListIterator<Element> listIterator(int index) {return contents.listIterator(index);}	
+
+org.jsoup.select.Elements.subList	2	int	int	
+public List<Element> subList(int fromIndex, int toIndex) {return contents.subList(fromIndex, toIndex);}	
+
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/select/package-info.java
+Preprocessing file:	./repos/Jsoup-1_buggy/src/main/java/org/jsoup/select/Selector.java
+org.jsoup.select.Selector.Selector	2	String	Element	
+private Selector(String query, Element root) {	        Validate.notNull(query);	        query = query.trim();	        Validate.notEmpty(query);	        Validate.notNull(root);		        this.elements = new LinkedHashSet<Element>();	        this.query = query;	        this.root = root;	        this.tq = new TokenQueue(query);	    }	
+
+org.jsoup.select.Selector.select	2	String	Element	
+/**	     Find elements matching selector.	     @param query CSS selector	     @param root root element to descend into	     @return matching elements, empty if not	     */	    public static Elements select(String query, Element root) {	        return new Selector(query, root).select();	    }	
+
+org.jsoup.select.Selector.select	2	String	Iterable<Element>	
+/**	     Find elements matching selector.	     @param query CSS selector	     @param roots root elements to descend into	     @return matching elements, empty if not	     */	    public static Elements select(String query, Iterable<Element> roots) {	        Validate.notEmpty(query);	        Validate.notNull(roots);	        LinkedHashSet<Element> elements = new LinkedHashSet<Element>();		        for (Element root : roots) {	            elements.addAll(select(query, root));	        }	        return new Elements(elements);	    }	
+
+org.jsoup.select.Selector.select	0	
+private Elements select() {	        tq.consumeWhitespace();	        	        if (tq.matchesAny(combinators)) { // if starts with a combinator, use root as elements	            elements.add(root);	            combinator(tq.consume().toString());	        } else {	            addElements(findElements()); // chomp first element matcher off queue 	        }            	               	        while (!tq.isEmpty()) {	            // hierarchy and extras	            boolean seenWhite = tq.consumeWhitespace();	            	            if (tq.matchChomp(",")) { // group or	                while (!tq.isEmpty()) {	                    String subQuery = tq.chompTo(",");	                    elements.addAll(select(subQuery, root));	                }	            } else if (tq.matchesAny(combinators)) {	                combinator(tq.consume().toString());	            } else if (seenWhite) {	                combinator(" ");	            } else { // E.class, E#id, E[attr] etc. AND	                Elements candidates = findElements(); // take next el, #. etc off queue	                intersectElements(filterForSelf(elements, candidates));	            }	        }	        return new Elements(elements);	    }	
+
+org.jsoup.select.Selector.combinator	1	String	
+private void combinator(String combinator) {	        tq.consumeWhitespace();	        String subQuery = tq.consumeToAny(combinators); // support multi > childs	        	        Elements output;	        if (combinator.equals(">"))	            output = filterForChildren(elements, select(subQuery, elements));	        else if (combinator.equals(" "))	            output = filterForDescendants(elements, select(subQuery, elements));	        else if (combinator.equals("+"))	            output = filterForAdjacentSiblings(elements, select(subQuery, root));	        else if (combinator.equals("~"))	            output = filterForGeneralSiblings(elements, select(subQuery, root));	        else	            throw new IllegalStateException("Unknown combinator: " + combinator);	        	        elements.clear(); elements.addAll(output);	    }	
+
+org.jsoup.select.Selector.findElements	0	
+private Elements findElements() {	        if (tq.matchChomp("#")) {	            return byId();	        } else if (tq.matchChomp(".")) {	            return byClass();	        } else if (tq.matchesWord()) {	            return byTag();	        } else if (tq.matchChomp("[")) {	            return byAttribute();	        } else if (tq.matchChomp("*")) {	            return allElements();	        } else if (tq.matchChomp(":lt(")) {	            return indexLessThan();	        } else if (tq.matchChomp(":gt(")) {	            return indexGreaterThan();	        } else if (tq.matchChomp(":eq(")) {	            return indexEquals();	        } else { // unhandled	            throw new SelectorParseException("Could not parse query " + query);	        }	    }	
+
+org.jsoup.select.Selector.addElements	1	Collection<Element>	
+private void addElements(Collection<Element> add) {	        elements.addAll(add);	    }	
+
+org.jsoup.select.Selector.intersectElements	1	Collection<Element>	
+private void intersectElements(Collection<Element> intersect) {	        elements.retainAll(intersect);	    }	
+
+org.jsoup.select.Selector.byId	0	
+private Elements byId() {	        String id = tq.consumeCssIdentifier();	        Validate.notEmpty(id);		        Element found = root.getElementById(id);	        Elements byId = new Elements();	        if(found != null)	            byId.add(found);	        return byId;	    }	
+
+org.jsoup.select.Selector.byClass	0	
+private Elements byClass() {	        String className = tq.consumeCssIdentifier();	        Validate.notEmpty(className);		        return root.getElementsByClass(className);	    }	
+
+org.jsoup.select.Selector.byTag	0	
+private Elements byTag() {	        String tagName = tq.consumeWord();	        Validate.notEmpty(tagName);		        return root.getElementsByTag(tagName);	    }	
+
+org.jsoup.select.Selector.byAttribute	0	
+private Elements byAttribute() {	        String key = tq.consumeToAny("=", "!=", "^=", "$=", "*=", "]"); // eq, not, start, end, contain, (no val)	        Validate.notEmpty(key);		        if (tq.matchChomp("]")) {	            return root.getElementsByAttribute(key);	        } else {	            if (tq.matchChomp("="))	                return root.getElementsByAttributeValue(key, tq.chompTo("]"));		            else if (tq.matchChomp("!="))	                return root.getElementsByAttributeValueNot(key, tq.chompTo("]"));		            else if (tq.matchChomp("^="))	                return root.getElementsByAttributeValueStarting(key, tq.chompTo("]"));		            else if (tq.matchChomp("$="))	                return root.getElementsByAttributeValueEnding(key, tq.chompTo("]"));		            else if (tq.matchChomp("*="))	                return root.getElementsByAttributeValueContaining(key, tq.chompTo("]"));	            	            else	                throw new SelectorParseException("Could not parse attribute query " + query);	        }	    }	
+
+org.jsoup.select.Selector.allElements	0	
+private Elements allElements() {	        return root.getAllElements();	    }	
+
+org.jsoup.select.Selector.indexLessThan	0	
+private Elements indexLessThan() {	        return root.getElementsByIndexLessThan(consumeIndex());	    }	
+
+org.jsoup.select.Selector.indexGreaterThan	0	
+private Elements indexGreaterThan() {	        return root.getElementsByIndexGreaterThan(consumeIndex());	    }	
+
+org.jsoup.select.Selector.indexEquals	0	
+private Elements indexEquals() {	        return root.getElementsByIndexEquals(consumeIndex());	    }	
+
+org.jsoup.select.Selector.consumeIndex	0	
+private int consumeIndex() {	        String indexS = tq.chompTo(")").trim();	        Validate.isTrue(StringUtils.isNumeric(indexS), "Index must be numeric");	        int index = Integer.parseInt(indexS);		        return index;	    }	
+
+org.jsoup.select.Selector.filterForChildren	2	Collection<Element>	Collection<Element>	
+private static Elements filterForChildren(Collection<Element> parents, Collection<Element> candidates) {	        Elements children = new Elements();	        CHILD: for (Element c : candidates) {	            for (Element p : parents) {	                if (c.parent() != null && c.parent().equals(p)) {	                    children.add(c);	                    continue CHILD;	                }	            }	        }	        return children;	    }	
+
+org.jsoup.select.Selector.filterForDescendants	2	Collection<Element>	Collection<Element>	
+private static Elements filterForDescendants(Collection<Element> parents, Collection<Element> candidates) {	        Elements children = new Elements();	        CHILD: for (Element c : candidates) {	            boolean found = false;	            for (Element p : parents) {	                if (c.equals(p)) {	                    found = true;	                    continue CHILD;	                }	            }	            if (!found)	                children.add(c);	        }	        return children;	    }	
+
+org.jsoup.select.Selector.filterForAdjacentSiblings	2	Collection<Element>	Collection<Element>	
+private static Elements filterForAdjacentSiblings(Collection<Element> elements, Collection<Element> candidates) {	        Elements siblings = new Elements();	        SIBLING: for (Element c: candidates) {	            for (Element e: elements) {	                if (!e.parent().equals(c.parent()))	                    continue;	                Element previousSib = c.previousElementSibling();	                if (previousSib != null && previousSib.equals(e)) {	                    siblings.add(c);	                    continue SIBLING;	                }	            }	        }	        return siblings;	    }	
+
+org.jsoup.select.Selector.filterForGeneralSiblings	2	Collection<Element>	Collection<Element>	
+private static Elements filterForGeneralSiblings(Collection<Element> elements, Collection<Element> candidates) {	        Elements output = new Elements();	        SIBLING: for (Element c: candidates) {	            for (Element e: elements) {	                if (!e.parent().equals(c.parent()))	                    continue;	                int ePos = e.elementSiblingIndex();	                int cPos = c.elementSiblingIndex();	                if (cPos > ePos) {	                    output.add(c);	                    continue SIBLING;	                }	            }	        }	        return output;	    }	
+
+org.jsoup.select.Selector.filterForSelf	2	Collection<Element>	Collection<Element>	
+private static Elements filterForSelf(Collection<Element> parents, Collection<Element> candidates) {	        Elements children = new Elements();	        CHILD: for (Element c : candidates) {	            for (Element p : parents) {	                if (c.equals(p)) {	                    children.add(c);	                    continue CHILD;	                }	            }   	        }	        return children;	    }	
+
+org.jsoup.select.Selector.SelectorParseException.SelectorParseException	1	String	
+public SelectorParseException(String s) {	            super(s);	        }	
+
