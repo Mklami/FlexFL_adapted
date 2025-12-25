@@ -37,8 +37,30 @@ def _buggy_base(dataset: str) -> Path:
 from typing import List, Optional
 from llama import Dialog, Llama
 import torch.distributed as dist
+import os
 
-ckpt_dir: str = '/home/m.lami/FlexFL_adapted/Meta-Llama-3-8B-Instruct-hf'
+# Model path: check environment variable first, then try common locations
+ckpt_dir = os.environ.get('MODEL_PATH') or os.environ.get('LLAMA_MODEL_PATH')
+if not ckpt_dir or (ckpt_dir and not os.path.exists(ckpt_dir)):
+    # Try common locations
+    possible_paths = [
+        '/home/m.lami/FlexFL_adapted/Meta-Llama-3-8B-Instruct-hf',  # Server path
+        str(PROJECT_ROOT / 'Meta-Llama-3-8B-Instruct-hf'),  # Local project root
+        str(Path.home() / 'Meta-Llama-3-8B-Instruct-hf'),  # Home directory
+    ]
+    ckpt_dir = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            ckpt_dir = path
+            break
+    
+    if not ckpt_dir:
+        raise FileNotFoundError(
+            f"Model not found. Please either:\n"
+            f"  1. Set MODEL_PATH environment variable: export MODEL_PATH=/path/to/model\n"
+            f"  2. Place model at one of these locations: {possible_paths}"
+        )
+
 tokenizer_path: None
 temperature: float = 0
 top_p: float = 1.0
@@ -248,5 +270,9 @@ Top_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n\
                 (out_path := OUT_DIR / f"{bug}.json").write_text(json.dumps(instruction, indent=4), encoding="utf-8")
                 break
             except Exception as e:
-                print(e)
+                print(f"Error processing {bug}: {e}")
+                import traceback
+                traceback.print_exc()
                 max_try -= 1
+                if max_try == 0:
+                    print(f"Failed to process {bug} after 10 attempts. Skipping.")
