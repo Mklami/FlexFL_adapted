@@ -92,16 +92,68 @@ def query(instruction):
 
 ######################### END
 
+import csv
+import datetime
 import json
 import os
 import shutil
 import sys
+import time
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 from function_call import (
     get_code_snippet, get_paths, get_classes, get_methods, find_class, find_method
 )
 import argparse
+
+try:
+    from codecarbon import EmissionsTracker
+    _CODECARBON_AVAILABLE = True
+except ImportError:
+    _CODECARBON_AVAILABLE = False
+    print("WARNING: codecarbon not installed — CO2/energy tracking disabled. Run: pip install codecarbon")
+
+try:
+    import pynvml
+    pynvml.nvmlInit()
+    _NVML_AVAILABLE = True
+except Exception:
+    _NVML_AVAILABLE = False
+    print("WARNING: pynvml not available or no NVIDIA GPU found — GPU energy tracking disabled. Run: pip install pynvml")
+
+
+def _nvml_energy_mj(handle):
+    """Return cumulative GPU energy counter in millijoules, or None if unavailable."""
+    if not _NVML_AVAILABLE:
+        return None
+    try:
+        return pynvml.nvmlDeviceGetTotalEnergyConsumption(handle)
+    except pynvml.NVMLError:
+        return None
+
+
+def _get_nvml_handle():
+    if not _NVML_AVAILABLE:
+        return None
+    try:
+        return pynvml.nvmlDeviceGetHandleByIndex(0)
+    except pynvml.NVMLError:
+        return None
+
+
+ENERGY_LOG_HEADER = [
+    "run_timestamp", "bug", "dataset", "stage", "input_type",
+    "duration_s", "gpu_energy_j", "codecarbon_energy_kwh", "codecarbon_co2_kg",
+]
+
+
+def _append_energy_row(log_path: Path, row: dict):
+    write_header = not log_path.exists()
+    with log_path.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=ENERGY_LOG_HEADER)
+        if write_header:
+            writer.writeheader()
+        writer.writerow(row)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -133,7 +185,11 @@ if __name__ == "__main__":
 
     OUT_DIR = (RES_ROOT / output_dir)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    
+
+    energy_log_path = RES_ROOT / "energy_log.csv"
+    run_timestamp = datetime.datetime.now().isoformat(timespec="seconds")
+    nvml_handle = _get_nvml_handle()
+
     for bug in bugs:
         #if bug != 'Time-25':
         #    continue
@@ -142,6 +198,22 @@ if __name__ == "__main__":
             print(f"Skipping {bug} (already processed)")
             continue
         print(bug)
+
+        # --- energy tracking setup ---
+        cc_tracker = None
+        if _CODECARBON_AVAILABLE:
+            cc_tracker = EmissionsTracker(
+                project_name=f"FlexFL_{dataset}_{stage}",
+                output_dir=str(RES_ROOT),
+                output_file="codecarbon_emissions.csv",
+                log_level="error",
+                save_to_file=True,
+            )
+            cc_tracker.start()
+        nvml_start = _nvml_energy_mj(nvml_handle)
+        t_start = time.monotonic()
+        # -----------------------------
+
         max_try = 10
         while max_try > 0:
             try:
@@ -276,3 +348,28 @@ Top_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n\
                 max_try -= 1
                 if max_try == 0:
                     print(f"Failed to process {bug} after 10 attempts. Skipping.")
+
+        # --- energy tracking teardown ---
+        duration_s = time.monotonic() - t_start
+        cc_energy_kwh = None
+        cc_co2_kg = None
+        if cc_tracker is not None:
+            emissions = cc_tracker.stop()
+            if emissions is not None:
+                cc_co2_kg = emissions
+                cc_energy_kwh = cc_tracker._total_energy.kWh if hasattr(cc_tracker, "_total_energy") else None
+        nvml_end = _nvml_energy_mj(nvml_handle)
+        gpu_energy_j = ((nvml_end - nvml_start) / 1000.0) if (nvml_start is not None and nvml_end is not None) else None
+        _append_energy_row(energy_log_path, {
+            "run_timestamp": run_timestamp,
+            "bug": bug,
+            "dataset": dataset,
+            "stage": stage,
+            "input_type": input_type,
+            "duration_s": round(duration_s, 3),
+            "gpu_energy_j": round(gpu_energy_j, 3) if gpu_energy_j is not None else "",
+            "codecarbon_energy_kwh": round(cc_energy_kwh, 6) if cc_energy_kwh is not None else "",
+            "codecarbon_co2_kg": round(cc_co2_kg, 6) if cc_co2_kg is not None else "",
+        })
+        print(f"  [energy] duration={duration_s:.1f}s gpu_energy={gpu_energy_j}J cc_co2={cc_co2_kg}kg")
+        # --------------------------------

@@ -130,6 +130,13 @@ if __name__ == "__main__":
                     top5.append(bug)
                     top5_hit = 1
         
+        # Find the rank of first file hit
+        file_hit_rank = 0
+        for rank in range(1, min(6, len(suspicious_files) + 1)):  # Check ranks 1-5
+            if suspicious_files[rank - 1] in gt_files:  # rank-1 because list is 0-indexed
+                file_hit_rank = rank
+                break
+        
         # Check top-1, top-3, top-5 file-level hits
         for i in [1,3,5]:
             file_flag = False
@@ -177,6 +184,7 @@ if __name__ == "__main__":
             'top1_file_hit': top1_file_hit,
             'top3_file_hit': top3_file_hit,
             'top5_file_hit': top5_file_hit,
+            'file_hit_rank': file_hit_rank,  # Rank where first file hit occurs (0 if none)
             'mrr': bug_mrr,
             'map': bug_map,
             'num_gt_methods': len(gt[bug]),
@@ -214,7 +222,7 @@ if __name__ == "__main__":
     
     # Write per-bug metrics to CSV
     with open(csv_filename, 'w', newline='') as csvfile:
-        fieldnames = ['bug_id', 'top1_hit', 'top3_hit', 'top5_hit', 'top1_file_hit', 'top3_file_hit', 'top5_file_hit', 'mrr', 'map', 'num_gt_methods', 'num_gt_files']
+        fieldnames = ['bug_id', 'top1_hit', 'top3_hit', 'top5_hit', 'top1_file_hit', 'top3_file_hit', 'top5_file_hit', 'file_hit_rank', 'mrr', 'map', 'num_gt_methods', 'num_gt_files']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(per_bug_results)
