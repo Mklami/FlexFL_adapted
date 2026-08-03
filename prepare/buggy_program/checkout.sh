@@ -7,6 +7,7 @@ REPO_DIR=$CURRENT_DIR/Collect_Methods/repos
 
 cat "./bug_list.txt" | while read bug
 do
+    [[ -z "$bug" ]] && continue
     project=${bug%-*}
     bugid=${bug#*-}
     checkout_dir=$REPO_DIR/${project}-${bugid}
