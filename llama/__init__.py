@@ -29,6 +29,7 @@ class Llama:
         )
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model.to(device)
+        model.generation_config.max_length = 8192
         return cls(model, tok, device)
 
     def chat_completion(self, dialogs, max_gen_len=512, temperature=0.6, top_p=0.9):
