@@ -44,9 +44,11 @@ ckpt_dir = os.environ.get('MODEL_PATH') or os.environ.get('LLAMA_MODEL_PATH')
 if not ckpt_dir or (ckpt_dir and not os.path.exists(ckpt_dir)):
     # Try common locations
     possible_paths = [
-        '/home/m.lami/FlexFL_adapted/Meta-Llama-3-8B-Instruct-hf',  # Server path
-        str(PROJECT_ROOT / 'Meta-Llama-3-8B-Instruct-hf'),  # Local project root
-        str(Path.home() / 'Meta-Llama-3-8B-Instruct-hf'),  # Home directory
+        '/home/m.lami/FlexFL_adapted/gemma-3-12b-it',             # Gemma server path
+        str(PROJECT_ROOT / 'gemma-3-12b-it'),                      # Gemma local
+        '/home/m.lami/FlexFL_adapted/Meta-Llama-3-8B-Instruct-hf', # Llama server path
+        str(PROJECT_ROOT / 'Meta-Llama-3-8B-Instruct-hf'),         # Llama local
+        str(Path.home() / 'Meta-Llama-3-8B-Instruct-hf'),
     ]
     ckpt_dir = None
     for path in possible_paths:
@@ -161,12 +163,14 @@ if __name__ == "__main__":
     parser.add_argument('--input', default='All', choices=['bug_report', 'trigger_test', 'All'])
     parser.add_argument('--stage', default='SR', choices=['SR', 'LR'])
     parser.add_argument('--rank', default='All')
+    parser.add_argument('--model-name', default=model_name, help='Model name used for output folder (default: inferred from model path)')
     parser.add_argument('--bug-list', default=None, help='Path to custom bug list file (default: data/bug_list/<dataset>/bug_list.txt)')
     args = parser.parse_args()
     dataset = args.dataset
     input_type = args.input
     stage = args.stage
     rank = args.rank
+    model_name = args.model_name
 
     if args.bug_list:
         bug_list_path = Path(args.bug_list)

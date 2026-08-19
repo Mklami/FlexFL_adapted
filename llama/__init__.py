@@ -1,8 +1,8 @@
 # /home/m.lami/FlexFL_adapted/llama/__init__.py
 from dataclasses import dataclass
 from typing import List, Dict, Any
-import os, torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import os
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 @dataclass
 class Message:
@@ -14,37 +14,52 @@ class Dialog:
     messages: List[Message]
 
 class Llama:
-    def __init__(self, model, tokenizer, device):
+    def __init__(self, model, tokenizer, device, assistant_role="assistant"):
         self.model = model
         self.tokenizer = tokenizer
         self.device = device
+        self._assistant_role = assistant_role
 
     @classmethod
     def build(cls, ckpt_dir: str, tokenizer_path: str = None, **_):
         model_dir = ckpt_dir or os.environ.get("MODEL_DIR")
         tok = AutoTokenizer.from_pretrained(model_dir, use_fast=True)
-        dtype = torch.bfloat16 if torch.cuda.is_available() else torch.float32
+
+        quant_config = BitsAndBytesConfig(load_in_8bit=True)
         model = AutoModelForCausalLM.from_pretrained(
-            model_dir, torch_dtype=dtype, low_cpu_mem_usage=True
+            model_dir,
+            quantization_config=quant_config,
+            device_map="auto",
+            low_cpu_mem_usage=True,
         )
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        model.to(device)
-        model.generation_config.max_length = 8192
-        return cls(model, tok, device)
+        device = str(next(model.parameters()).device)
+
+        # Gemma uses "model" role; everything else uses "assistant"
+        assistant_role = "model" if "gemma" in model_dir.lower() else "assistant"
+
+        model.generation_config.max_length = model.config.max_position_embeddings
+        return cls(model, tok, device, assistant_role)
 
     def chat_completion(self, dialogs, max_gen_len=512, temperature=0.6, top_p=0.9):
         outs = []
         for d in dialogs:
-            # Accept either Dialog(...) or list[{"role":..., "content":...}, ...]
-            if hasattr(d, "messages"):  # Dialog
+            if hasattr(d, "messages"):
                 msgs = [{"role": m.role, "content": m.content} for m in d.messages]
-            elif isinstance(d, list):   # already list of dicts
+            elif isinstance(d, list):
                 msgs = d
             else:
                 raise TypeError(f"Unsupported dialog type: {type(d)}")
 
+            # Normalize roles for this model's chat template
+            normalized = []
+            for m in msgs:
+                role = m["role"].lower()
+                if role == "assistant":
+                    role = self._assistant_role
+                normalized.append({"role": role, "content": m["content"]})
+
             prompt = self.tokenizer.apply_chat_template(
-                msgs, tokenize=False, add_generation_prompt=True
+                normalized, tokenize=False, add_generation_prompt=True
             )
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
             gen = self.model.generate(
@@ -59,5 +74,3 @@ class Llama:
             text = self.tokenizer.decode(gen_ids, skip_special_tokens=True)
             outs.append({"generation": {"role": "assistant", "content": text}})
         return outs
-
-
