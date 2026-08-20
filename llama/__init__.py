@@ -37,7 +37,10 @@ class Llama:
         # Gemma uses "model" role; everything else uses "assistant"
         assistant_role = "model" if "gemma" in model_dir.lower() else "assistant"
 
-        model.generation_config.max_length = model.config.max_position_embeddings
+        max_pos = getattr(model.config, "max_position_embeddings",
+                  getattr(model.config, "max_seq_len",
+                  getattr(model.config, "seq_length", 131072)))
+        model.generation_config.max_length = max_pos
         return cls(model, tok, device, assistant_role)
 
     def chat_completion(self, dialogs, max_gen_len=512, temperature=0.6, top_p=0.9):
@@ -58,8 +61,10 @@ class Llama:
                     role = self._assistant_role
                 normalized.append({"role": role, "content": m["content"]})
 
+            is_qwen = "qwen" in type(self.tokenizer).__name__.lower()
+            tmpl_kwargs = {"enable_thinking": False} if is_qwen else {}
             prompt = self.tokenizer.apply_chat_template(
-                normalized, tokenize=False, add_generation_prompt=True
+                normalized, tokenize=False, add_generation_prompt=True, **tmpl_kwargs
             )
             inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
             gen = self.model.generate(
