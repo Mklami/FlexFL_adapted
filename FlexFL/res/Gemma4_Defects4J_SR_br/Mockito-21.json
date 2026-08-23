@@ -1,0 +1,142 @@
+[
+    {
+        "role": "system",
+        "content": "You are a debugging assistant of our Java software. You will be presented with a bug report and tools (functions) to access the source code of the system under test (SUT). Your task is to locate the top-5 most likely culprit methods based on a bug report and the information you retrieve using given functions. \nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\nYou have 10 chances to call function."
+    },
+    {
+        "role": "user",
+        "content": "The bug report is as follows:\n```\nTitle:Issue Report\nDescription:Allow convenient spying on abstract classes\u00a0#92New issueCopy linkNew issueCopy linkClosedClosedAllow convenient spying on abstract classes#92Copy linkDescriptionfluentfutureopened on Sep 30, 2014Issue body actionsI posted this in GoogleCode and was asked to submit in github. Mockito is easy to use when the test needs to provide canned values for a certain method. But it gets harder when a canned value isn't sufficient. Example 1: Fake with trivial Logic interface UserAccount {   List<String> getEmails();   void addEmail(String email);   // 12 other methods ... }  When mocking such domain entity object, it's tedious to manually program getEmails()/addEmail() with when().thenReturn() and to make sure the two methods are logically consistent, that is, getEmails() returns all emails added. Example 2: callback-style API interface AccountService {   void getAccount(String id, AsyncCallback<UserAccount> callback); }  Stubbing AccountService isn't easy. It'd require use of Answer, and the Answer API isn't statically type safe: when(service.getAccount(eq(id), any(AsyncCallback.class)).thenAnswer(new Answer<Void>() {   AsyncCallback<UserAccount> callback = (AsyncCallback<UserAccount>) getArguments()[1];   ... });  Example 3: Uninteresting parameters interface AccountRpcService {   FutureAccount getAccount(RpcContext context, String id); }  None of the tests care about the context object. It's an uninteresting parameter imposed by the framework. If AccountRpcService were directly mocked, all tests would have to use isA() to repetitively mention this uninteresting parameter, like this: when(service.getAccount(isA(RpcContext.class), eq(\"id\")).thenReturn(...); And all other parameters are required to be wrapped in eq(). Proposal I propose adding support for abstract classes to mockito to make it easier to deal with tests like above: For example 1 abstract class FakeUserAccount implements UserAccount {   private final List<String> emails = new ArrayList<>();    @Override public void addEmail(String email) {     emails.add(email);   }   @Override List<String> getEmails() {     return ImmutableList.copyOf(emails);   } }  @Fake private FakeUserAccount userAccount; // Mockito instantiates abstract class.  For example 2 abstract class MockAccountService implements AccountService {   @Override public void getAccount(String id, AsyncCallback<UserAccount> callback) {     callback.onSuccess(getAccount(id));   }   abstract UserAccount getAccount(String id); }  @Fake private MockAccountService service;  ...  when(service.getAccount(\"id\")).thenReturn(account);  For example 3 abstract class MockAccountRpcService implements AccountRpcService {   @Override Future<Account> getAccount(RpcContext context, String id) {     checkNotNull(context);  // Common sanity test. Don't have to repeat it in tests.     return getAccount(id);   }    abstract Future<Account> getAccount(String id); }  @Fake private MockAccountRpcService service;  when(service.getAccount(\"id\")).thenReturn(...);  My work place internally implemented a default Answer to support abstract classes. We found that the support of abstract classes helps us to avoid overusing mocks when we should be using fakes. And in situations like above we get cleaner test code. But because it's not integrated in the core Mockito, there are gotchas with our implementation (like, you can't have private/final methods in your fake). If the idea sounds okay to give a try, I'll volunteer to submit a patch. Thanks!MetadataMetadataAssigneesNo one assignedLabelsNo labelsNo labelsTypeNo typeProjectsNo projectsMilestoneNo milestoneRelationshipsNone yetDevelopmentNo branches or pull requestsIssue actions\n```\nLet's locate the faulty method step by step using reasoning and function calls. Now reason and plan how to locate the buggy methods."
+    },
+    {
+        "role": "Assistant",
+        "content": "Based on the bug report, I can identify the following key points:\n\n1. The issue is related to mocking abstract classes in Mockito.\n2. The reporter proposes adding support for abstract classes to Mockito to make it easier to deal with tests.\n3. The reporter provides examples of how they implemented a default Answer to support abstract classes in their workplace.\n\nTo locate the faulty method, I will start by finding the classes and methods mentioned in the bug report. I will use the following function calls:\n\n1. `find_class()` to find the classes mentioned in the bug report.\n2. `get_classes_of_path()` to get the classes in the relevant paths.\n3. `get_methods_of_class()` to get the methods of the relevant classes.\n4. `get_code_snippet_of_method()` to get the code snippet of the relevant methods.\n\nBased on the bug report, I will start by finding the classes `UserAccount`, `AccountService`, and `AccountRpcService`. I will then look for methods that are mentioned in the bug report, such as `getEmails()`, `addEmail()`, `getAccount()`, and `thenReturn()`.\n\nI will also look for methods that are mentioned in the examples provided by the reporter, such as `getAccount(String id, AsyncCallback<UserAccount> callback)` and `getAccount(RpcContext context, String id)`.\n\nAfter analyzing the code snippets, I will try to identify the methods that are most likely to be the culprit. I will use my reasoning and judgment to narrow down the list of potential methods.\n\nI will use my 10 chances to call the function to gather more information and narrow down the list of potential methods."
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "find_class(\"UserAccount\")"
+    },
+    {
+        "role": "user",
+        "content": "Do not find `UserAccount` again because it is an invalid name. You can try the following names.\nAtMost\nTimeout\nAnd\nAny\nAtLeast"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_paths()"
+    },
+    {
+        "role": "user",
+        "content": "org.mockito\norg.mockito.configuration\norg.mockito.exceptions\norg.mockito.exceptions.base\norg.mockito.exceptions.misusing\norg.mockito.exceptions.verification\norg.mockito.exceptions.verification.junit\norg.mockito.internal\norg.mockito.internal.configuration\norg.mockito.internal.configuration.injection\norg.mockito.internal.configuration.injection.filter\norg.mockito.internal.configuration.injection.scanner\norg.mockito.internal.creation\norg.mockito.internal.creation.cglib\norg.mockito.internal.creation.instance\norg.mockito.internal.creation.settings\norg.mockito.internal.creation.util\norg.mockito.internal.debugging\norg.mockito.internal.exceptions\norg.mockito.internal.exceptions.stacktrace\norg.mockito.internal.exceptions.util\norg.mockito.internal.handler\norg.mockito.internal.invocation\norg.mockito.internal.invocation.finder\norg.mockito.internal.invocation.realmethod\norg.mockito.internal.junit\norg.mockito.internal.listeners\norg.mockito.internal.matchers\norg.mockito.internal.matchers.apachecommons\norg.mockito.internal.progress\norg.mockito.internal.reporting\norg.mockito.internal.rules\norg.mockito.internal.runners\norg.mockito.internal.runners.util\norg.mockito.internal.stubbing\norg.mockito.internal.stubbing.answers\norg.mockito.internal.stubbing.defaultanswers\norg.mockito.internal.util\norg.mockito.internal.util.collections\norg.mockito.internal.util.junit\norg.mockito.internal.util.reflection\norg.mockito.internal.verification\norg.mockito.internal.verification.api\norg.mockito.internal.verification.argumentmatching\norg.mockito.internal.verification.checkers\norg.mockito.junit\norg.mockito.runners\norg.mockito.stubbing.answers\norg.mockito.verification"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_classes_of_path(\"org.mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "AdditionalAnswers\nAdditionalMatchers\nArgumentCaptor\nArgumentMatcher\nBDDMockito\nBDDMockito.BDDOngoingStubbingImpl\nBDDMockito.BDDStubberImpl\nBDDMockito.Then\nMatchers\nMockito\nMockitoAnnotations"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"org.mockito.Mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "Please call functions in the right format `FunctionName(Argument)`.\nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\n"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "find_class(\"Abstract\")"
+    },
+    {
+        "role": "user",
+        "content": "Do not find `Abstract` again because it is an invalid name. You can try the following names.\nAtLeast\nAtMost"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"org.mockito.Mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "Please call functions in the right format `FunctionName(Argument)`.\nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\n"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"org.mockito.Mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "Please call functions in the right format `FunctionName(Argument)`.\nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\n"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_paths()"
+    },
+    {
+        "role": "user",
+        "content": "org.mockito\norg.mockito.configuration\norg.mockito.exceptions\norg.mockito.exceptions.base\norg.mockito.exceptions.misusing\norg.mockito.exceptions.verification\norg.mockito.exceptions.verification.junit\norg.mockito.internal\norg.mockito.internal.configuration\norg.mockito.internal.configuration.injection\norg.mockito.internal.configuration.injection.filter\norg.mockito.internal.configuration.injection.scanner\norg.mockito.internal.creation\norg.mockito.internal.creation.cglib\norg.mockito.internal.creation.instance\norg.mockito.internal.creation.settings\norg.mockito.internal.creation.util\norg.mockito.internal.debugging\norg.mockito.internal.exceptions\norg.mockito.internal.exceptions.stacktrace\norg.mockito.internal.exceptions.util\norg.mockito.internal.handler\norg.mockito.internal.invocation\norg.mockito.internal.invocation.finder\norg.mockito.internal.invocation.realmethod\norg.mockito.internal.junit\norg.mockito.internal.listeners\norg.mockito.internal.matchers\norg.mockito.internal.matchers.apachecommons\norg.mockito.internal.progress\norg.mockito.internal.reporting\norg.mockito.internal.rules\norg.mockito.internal.runners\norg.mockito.internal.runners.util\norg.mockito.internal.stubbing\norg.mockito.internal.stubbing.answers\norg.mockito.internal.stubbing.defaultanswers\norg.mockito.internal.util\norg.mockito.internal.util.collections\norg.mockito.internal.util.junit\norg.mockito.internal.util.reflection\norg.mockito.internal.verification\norg.mockito.internal.verification.api\norg.mockito.internal.verification.argumentmatching\norg.mockito.internal.verification.checkers\norg.mockito.junit\norg.mockito.runners\norg.mockito.stubbing.answers\norg.mockito.verification"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_classes_of_path(\"org.mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "AdditionalAnswers\nAdditionalMatchers\nArgumentCaptor\nArgumentMatcher\nBDDMockito\nBDDMockito.BDDOngoingStubbingImpl\nBDDMockito.BDDStubberImpl\nBDDMockito.Then\nMatchers\nMockito\nMockitoAnnotations"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"Mockito\")"
+    },
+    {
+        "role": "user",
+        "content": "after(int)\natLeast(int)\natLeastOnce()\natMost(int)\ncalls(int)\ndebug()\ndoAnswer(Answer)\ndoCallRealMethod()\ndoNothing()\ndoReturn(Object)\ndoThrow(Class<? extends Throwable>)\ndoThrow(Throwable)\nignoreStubs(Object)\ninOrder(Object)\nmock(Class<T>)\nmock(Class<T>,Answer)\nmock(Class<T>,MockSettings)\nmock(Class<T>,ReturnValues)\nmock(Class<T>,String)\nmockingDetails(Object)\nnever()\nonly()\nreset(T)\nspy(Class<T>)\nspy(T)\nstub(T)\nstubVoid(T)\ntimeout(long)\ntimes(int)\nvalidateMockitoUsage()\nverify(T)\nverify(T,VerificationMode)\nverifyNoMoreInteractions(Object)\nverifyZeroInteractions(Object)\nwhen(T)\nwithSettings()"
+    },
+    {
+        "role": "user",
+        "content": "Based on the available information, provide complete name of the top-5 most likely culprit methods for the bug please. Since your answer will be processed automatically, please give your answer in the format as follows.\nTop_1 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_2 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_3 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_4 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n"
+    },
+    {
+        "role": "Assistant",
+        "content": "Based on the available information, I will provide the top-5 most likely culprit methods for the bug."
+    }
+]

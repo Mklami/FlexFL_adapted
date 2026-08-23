@@ -1,0 +1,142 @@
+[
+    {
+        "role": "system",
+        "content": "You are a debugging assistant of our Java software. You will be presented with a bug report and tools (functions) to access the source code of the system under test (SUT). Your task is to locate the top-5 most likely culprit methods based on a bug report and the information you retrieve using given functions. \nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\nYou have 10 chances to call function."
+    },
+    {
+        "role": "user",
+        "content": "The bug report is as follows:\n```\nTitle:Issue Report\nDescription:ArrayIndexOutOfBoundsException: 128 when repeatedly serializing to a byte array\u00a0#216New issueCopy linkNew issueCopy linkClosedClosedArrayIndexOutOfBoundsException: 128 when repeatedly serializing to a byte array#216Copy linkMilestone2.6.2Descriptiongeekbeastopened on Sep 9, 2015Issue body actionsjava.lang.ArrayIndexOutOfBoundsException: 128     at com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(ByteQuadsCanonicalizer.java:853)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.addName(UTF8StreamJsonParser.java:2340)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.findName(UTF8StreamJsonParser.java:2224)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.parseLongName(UTF8StreamJsonParser.java:1831)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.parseMediumName2(UTF8StreamJsonParser.java:1786)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.parseMediumName(UTF8StreamJsonParser.java:1743)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser._parseName(UTF8StreamJsonParser.java:1678)     at com.fasterxml.jackson.core.json.UTF8StreamJsonParser.nextFieldName(UTF8StreamJsonParser.java:1007)     at com.fasterxml.jackson.databind.deser.std.MapDeserializer._readAndBindStringMap(MapDeserializer.java:471)     at com.fasterxml.jackson.databind.deser.std.MapDeserializer.deserialize(MapDeserializer.java:341)     at com.fasterxml.jackson.databind.deser.std.MapDeserializer.deserialize(MapDeserializer.java:26)     at com.fasterxml.jackson.databind.ObjectMapper._readMapAndClose(ObjectMapper.java:3702)     at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:2824)     at com.kryptnostic.services.v1.SmokeTests.spamAddIndexPair(SmokeTests.java:605)     at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)     at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)     at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)     at java.lang.reflect.Method.invoke(Method.java:497)     at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:47)     at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)     at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:44)     at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)     at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)     at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:271)     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:70)     at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:50)     at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)     at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)     at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)     at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)     at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)     at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)     at org.junit.internal.runners.statements.RunAfters.evaluate(RunAfters.java:27)     at org.junit.runners.ParentRunner.run(ParentRunner.java:309)     at org.eclipse.jdt.internal.junit4.runner.JUnit4TestReference.run(JUnit4TestReference.java:50)     at org.eclipse.jdt.internal.junit.runner.TestExecution.run(TestExecution.java:38)     at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:459)     at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.runTests(RemoteTestRunner.java:675)     at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.run(RemoteTestRunner.java:382)     at org.eclipse.jdt.internal.junit.runner.RemoteTestRunner.main(RemoteTestRunner.java:192)  Repro: @Test public void spamTest() {         ObjectMapper mapper = new ObjectMapper();         Map<ObjectUserKey, ServerIndexPair> ssip = Maps.newConcurrentMap();         for ( int i = 0; i < 10000; ++i ) {             byte[] indexPairBytes = new byte[ 2080 ];             new Random().nextBytes( indexPairBytes );             ServerIndexPair sip = new ServerIndexPair( indexPairBytes );              byte[] s = mapper.writeValueAsBytes( ImmutableMap.of( UUID                     .randomUUID().toString(), sip ) );             Map<String, ServerIndexPair> metadata = mapper.readValue( s,                     new TypeReference<Map<String, ServerIndexPair>>() {} );             for ( Entry<String, ServerIndexPair> metadataEntry : metadata.entrySet() ) {                 ServerIndexPair indexPair = metadataEntry.getValue();                 ssip.put( new ObjectUserKey( metadataEntry.getKey(), user ),                         indexPair );             }             logger.error( \"Iteration: {}\", i );         } }  public class ServerIndexPair {     public static final String INDEX_PAIR_FIELD = \"indexPair\";     private final byte[]       indexPair;      @JsonCreator     public ServerIndexPair( @JsonProperty( INDEX_PAIR_FIELD ) byte[] indexPair ) {         Preconditions.checkState( indexPair.length == 2080, \"Index pair must be 2080 bytes long.\" );         this.indexPair = indexPair;     }      @JsonProperty( INDEX_PAIR_FIELD )     public byte[] getIndexPair() {         return indexPair;     } }  public class ObjectUserKey {     public static final String SEPARATOR = \":\";     private final String       objectId;     private final UUID         userKey;      @JsonCreator     public ObjectUserKey(             @JsonProperty( Names.ID_FIELD ) String objectId,             @JsonProperty( Names.USER_FIELD ) UUID userKey ) {         super();         this.objectId = objectId;         this.userKey = userKey;     }      @JsonProperty( Names.ID_FIELD )     public String getObjectId() {         return objectId;     }      @JsonProperty( Names.USER_FIELD )     public UUID getUserKey() {         return userKey;     }      @Override     public int hashCode() {         final int prime = 31;         int result = 1;         result = prime * result + ( ( objectId == null ) ? 0 : objectId.hashCode() );         return result;     }      @Override     public boolean equals( Object obj ) {         if ( this == obj ) {             return true;         }         if ( obj == null ) {             return false;         }         if ( !( obj instanceof ObjectUserKey ) ) {             return false;         }         ObjectUserKey other = (ObjectUserKey) obj;         if ( objectId == null ) {             if ( other.objectId != null ) {                 return false;             }         }         if ( userKey == null ) {             if ( other.userKey != null ) {                 return false;             }         }         if ( !objectId.equals( other.objectId ) ) {             return false;         }         if ( !userKey.equals( other.userKey ) ) {             return false;         }         return true;     }      @Override     public String toString() {         return userKey + SEPARATOR + objectId;     }      public static ObjectUserKey fromString( String value ) {         int index = value.lastIndexOf( ObjectUserKey.SEPARATOR );         Preconditions.checkState( index > -1, \"Separator character \" + SEPARATOR                 + \" should be present for ObjectUserKey\" );         String userKeyString = value.substring( 0, index );         String objectIdString = value.substring( index + 1 );         UUID userKey = UUID.fromString( userKeyString );         return new ObjectUserKey( objectIdString, userKey );     }      public byte[] asBytes() {         return this.toString().getBytes();     }  } MetadataMetadataAssigneesNo one assignedLabelsNo labelsNo labelsTypeNo typeProjectsNo projectsMilestone2.6.2No due dateRelationshipsNone yetDevelopmentNo branches or pull requestsIssue actions\n```\nLet's locate the faulty method step by step using reasoning and function calls. Now reason and plan how to locate the buggy methods."
+    },
+    {
+        "role": "Assistant",
+        "content": "Based on the bug report, the issue is an ArrayIndexOutOfBoundsException: 128 when repeatedly serializing to a byte array. The error occurs in the `ByteQuadsCanonicalizer.addName` method.\n\nTo locate the faulty method, I will start by finding the class and method where the error occurs.\n\nFirst, I will call `find_class(\"ByteQuadsCanonicalizer\")` to find the class where the error occurs.\n\nNext, I will call `get_methods_of_class(\"com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\")` to get the methods of the `ByteQuadsCanonicalizer` class.\n\nThen, I will call `get_code_snippet_of_method(\"addName\")` to get the code snippet of the `addName` method.\n\nAfter that, I will analyze the code snippet to understand the logic and identify the potential cause of the error.\n\nIf the error is not immediately apparent, I will call `find_method(\"addName\")` to find other methods that call the `addName` method, and then repeat the process of getting the code snippet and analyzing the logic.\n\nI will continue this process until I have a good understanding of the code and can identify the faulty method.\n\nLet's start by calling `find_class(\"ByteQuadsCanonicalizer\")`."
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "find_class(\"ByteQuadsCanonicalizer\")"
+    },
+    {
+        "role": "user",
+        "content": "com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\")"
+    },
+    {
+        "role": "user",
+        "content": "You provide a wrong class name. Please try the following class names.\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.TableInfo"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.json.UTF8StreamJsonParser\")"
+    },
+    {
+        "role": "user",
+        "content": "Please call functions in the right format `FunctionName(Argument)`.\nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\n"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "find_method(\"addName\")"
+    },
+    {
+        "role": "user",
+        "content": "com.fasterxml.jackson.core.json.UTF8StreamJsonParser.addName(int[],int,int)\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String,int)\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String,int,int)\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String,int,int,int)\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String,int[],int)\ncom.fasterxml.jackson.core.sym.BytesToNameCanonicalizer.addName(String,int,int)\ncom.fasterxml.jackson.core.sym.BytesToNameCanonicalizer.addName(String,int[],int)"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_code_snippet_of_method(\"com.fasterxml.jackson.core.json.UTF8StreamJsonParser.addName\")"
+    },
+    {
+        "role": "user",
+        "content": "Do you mean `com.fasterxml.jackson.core.json.UTF8StreamJsonParser.addName(int[],int,int)`? Its code snippet is as follows.\n/**\t     * This is the main workhorse method used when we take a symbol\t     * table miss. It needs to demultiplex individual bytes, decode\t     * multi-byte chars (if any), and then construct Name instance\t     * and add it to the symbol table.\t     */\t    private final String addName(int[] quads, int qlen, int lastQuadBytes) throws JsonParseException\t    {\t        /* Ok: must decode UTF-8 chars. No other validation is\t         * needed, since unescaping has been done earlier as necessary\t         * (as well as error reporting for unescaped control chars)\t         */\t        // 4 bytes per quad, except last one maybe less\t        int byteLen = (qlen << 2) - 4 + lastQuadBytes;\t\t        /* And last one is not correctly aligned (leading zero bytes instead\t         * need to shift a bit, instead of trailing). Only need to shift it\t         * for UTF-8 decoding; need revert for storage (since key will not\t         * be aligned, to optimize lookup speed)\t         */\t        int lastQuad;\t\t        if (lastQuadBytes < 4) {\t            lastQuad = quads[qlen-1];\t            // 8/16/24 bit left shift\t            quads[qlen-1] = (lastQuad << ((4 - lastQuadBytes) << 3));\t        } else {\t            lastQuad = 0;\t        }\t\t        // Need some working space, TextBuffer works well:\t        char[] cbuf = _textBuffer.emptyAndGetCurrentSegment();\t        int cix = 0;\t\t        for (int ix = 0; ix < byteLen; ) {\t            int ch = quads[ix >> 2]; // current quad, need to shift+mask\t            int byteIx = (ix & 3);\t            ch = (ch >> ((3 - byteIx) << 3)) & 0xFF;\t            ++ix;\t\t            if (ch > 127) { // multi-byte\t                int needed;\t                if ((ch & 0xE0) == 0xC0) { // 2 bytes (0x0080 - 0x07FF)\t                    ch &= 0x1F;\t                    needed = 1;\t                } else if ((ch & 0xF0) == 0xE0) { // 3 bytes (0x0800 - 0xFFFF)\t                    ch &= 0x0F;\t                    needed = 2;\t                } else if ((ch & 0xF8) == 0xF0) { // 4 bytes; double-char with surrogates and all...\t                    ch &= 0x07;\t                    needed = 3;\t                } else { // 5- and 6-byte chars not valid xml chars\t                    _reportInvalidInitial(ch);\t                    needed = ch = 1; // never really gets this far\t                }\t                if ((ix + needed) > byteLen) {\t                    _reportInvalidEOF(\" in field name\");\t                }\t                \t                // Ok, always need at least one more:\t                int ch2 = quads[ix >> 2]; // current quad, need to shift+mask\t                byteIx = (ix & 3);\t                ch2 = (ch2 >> ((3 - byteIx) << 3));\t                ++ix;\t                \t                if ((ch2 & 0xC0) != 0x080) {\t                    _reportInvalidOther(ch2);\t                }\t                ch = (ch << 6) | (ch2 & 0x3F);\t                if (needed > 1) {\t                    ch2 = quads[ix >> 2];\t                    byteIx = (ix & 3);\t                    ch2 = (ch2 >> ((3 - byteIx) << 3));\t                    ++ix;\t                    \t                    if ((ch2 & 0xC0) != 0x080) {\t                        _reportInvalidOther(ch2);\t                    }\t                    ch = (ch << 6) | (ch2 & 0x3F);\t                    if (needed > 2) { // 4 bytes? (need surrogates on output)\t                        ch2 = quads[ix >> 2];\t                        byteIx = (ix & 3);\t                        ch2 = (ch2 >> ((3 - byteIx) << 3));\t                        ++ix;\t                        if ((ch2 & 0xC0) != 0x080) {\t                            _reportInvalidOther(ch2 & 0xFF);\t                        }\t                        ch = (ch << 6) | (ch2 & 0x3F);\t                    }\t                }\t                if (needed > 2) { // surrogate pair? once again, let's output one here, one later on\t                    ch -= 0x10000; // to normalize it starting with 0x0\t                    if (cix >= cbuf.length) {\t                        cbuf = _textBuffer.expandCurrentSegment();\t                    }\t                    cbuf[cix++] = (char) (0xD800 + (ch >> 10));\t                    ch = 0xDC00 | (ch & 0x03FF);\t                }\t            }\t            if (cix >= cbuf.length) {\t                cbuf = _textBuffer.expandCurrentSegment();\t            }\t            cbuf[cix++] = (char) ch;\t        }\t\t        // Ok. Now we have the character array, and can construct the String\t        String baseName = new String(cbuf, 0, cix);\t        // And finally, un-align if necessary\t        if (lastQuadBytes < 4) {\t            quads[qlen-1] = lastQuad;\t        }\t        return _symbols.addName(baseName, quads, qlen);\t    }\t"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.json.UTF8StreamJsonParser\")"
+    },
+    {
+        "role": "user",
+        "content": "Please call functions in the right format `FunctionName(Argument)`.\nFunction calls you can use are as follows.\n* find_class(`class_name`) -> Find a class in the bug report by fuzzy search. `class_name` -> The name of the class. *\n* find_method(`method_name`) -> Find a method in the bug report by fuzzy search. `method_name` -> The name of the method. *\n* get_paths() -> Get the paths of the java software system. *\n* get_classes_of_path(`path_name`) -> Get the classes in the path of the java software system. `path_name` -> The accurate name of the path which can be accessed by function call `get_paths`. *\n* get_methods_of_class(`class_name`) -> Get the methods belonging to the class of the java software system. `class_name` -> The complete name of the class, for example `PathName.ClassName`. *\n* get_code_snippet_of_method(`method_name`) -> Get the code snippet of the java method. `method_name` -> The complete name of the java method, for example `PathName.ClassName.MethodName(ArgType1,ArgType2)`. *\n* exit() -> Exit function calling to give your final answer when you are confident of the answer. *\n"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\")"
+    },
+    {
+        "role": "user",
+        "content": "You provide a wrong class name. Please try the following class names.\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.TableInfo"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\")"
+    },
+    {
+        "role": "user",
+        "content": "You provide a wrong class name. Please try the following class names.\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.TableInfo"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.sym\")"
+    },
+    {
+        "role": "user",
+        "content": "You provide a wrong class name. Please try the following class names.\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.TableInfo\ncom.fasterxml.jackson.core.sym.BytesToNameCanonicalizer\ncom.fasterxml.jackson.core.sym.BytesToNameCanonicalizer.Bucket\ncom.fasterxml.jackson.core.sym.BytesToNameCanonicalizer.TableInfo\ncom.fasterxml.jackson.core.sym.CharsToNameCanonicalizer\ncom.fasterxml.jackson.core.sym.CharsToNameCanonicalizer.Bucket\ncom.fasterxml.jackson.core.sym.Name\ncom.fasterxml.jackson.core.sym.Name1\ncom.fasterxml.jackson.core.sym.Name2\ncom.fasterxml.jackson.core.sym.Name3\ncom.fasterxml.jackson.core.sym.NameN"
+    },
+    {
+        "role": "user",
+        "content": "Now call a function in this format `FunctionName(Argument)` in a single line without any other word."
+    },
+    {
+        "role": "Assistant",
+        "content": "get_methods_of_class(\"com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\")"
+    },
+    {
+        "role": "user",
+        "content": "You provide a wrong class name. Please try the following class names.\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer\ncom.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.TableInfo"
+    },
+    {
+        "role": "user",
+        "content": "Based on the available information, provide complete name of the top-5 most likely culprit methods for the bug please. Since your answer will be processed automatically, please give your answer in the format as follows.\nTop_1 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_2 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_3 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_4 : PathName.ClassName.MethodName(ArgType1, ArgType2)\nTop_5 : PathName.ClassName.MethodName(ArgType1, ArgType2)\n"
+    },
+    {
+        "role": "Assistant",
+        "content": "Top_1 : com.fasterxml.jackson.core.json.UTF8StreamJsonParser.addName(int[], int, int)\nTop_2 : com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String, int)\nTop_3 : com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String, int, int)\nTop_4 : com.fasterxml.jackson.core.sym.ByteQuadsCanonicalizer.addName(String, int, int, int)\nTop_5 : com.fasterxml.jackson.core.sym.BytesToNameCanonicalizer.addName(String, int, int)"
+    }
+]

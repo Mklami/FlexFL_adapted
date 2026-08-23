@@ -1,0 +1,230 @@
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/Lexer.java
+org.apache.commons.csv.Lexer.Lexer	2	CSVFormat	ExtendedBufferedReader	
+Lexer(CSVFormat format, ExtendedBufferedReader in) {	        this.format = format;	        this.in = in;	        this.isEncapsulating = format.isEncapsulating();	        this.isEscaping = format.isEscaping();	        this.isCommentEnabled = format.isCommentingEnabled();	        this.delimiter = format.getDelimiter();	        this.escape = format.getEscape();	        this.encapsulator = format.getEncapsulator();	        this.commmentStart = format.getCommentStart();	        this.surroundingSpacesIgnored = format.isSurroundingSpacesIgnored();	        this.emptyLinesIgnored = format.isEmptyLinesIgnored();	    }	
+
+org.apache.commons.csv.Lexer.getLineNumber	0	
+int getLineNumber() {	        return in.getLineNumber();	    }	
+
+org.apache.commons.csv.Lexer.readEscape	1	int	
+int readEscape(int c) throws IOException {	        // assume c is the escape char (normally a backslash)	        c = in.read();	        switch (c) {	            case 'r':	                return '\r';	            case 'n':	                return '\n';	            case 't':	                return '\t';	            case 'b':	                return '\b';	            case 'f':	                return '\f';	            default:	                return c;	        }	    }	
+
+org.apache.commons.csv.Lexer.trimTrailingSpaces	1	StringBuilder	
+void trimTrailingSpaces(StringBuilder buffer) {	        int length = buffer.length();	        while (length > 0 && Character.isWhitespace(buffer.charAt(length - 1))) {	            length = length - 1;	        }	        if (length != buffer.length()) {	            buffer.setLength(length);	        }	    }	
+
+org.apache.commons.csv.Lexer.isWhitespace	1	int	
+/**	     * @return true if the given char is a whitespace character	     */	    boolean isWhitespace(int c) {	        return (c != format.getDelimiter()) && Character.isWhitespace((char) c);	    }	
+
+org.apache.commons.csv.Lexer.isEndOfLine	1	int	
+/**	     * Greedy - accepts \n, \r and \r\n	     * This checker consumes silently the second control-character...	     *	     * @return true if the given character is a line-terminator	     */	    boolean isEndOfLine(int c) throws IOException {	        // check if we have \r\n...	        if (c == '\r' && in.lookAhead() == '\n') {	            // note: does not change c outside of this method !!	            c = in.read();	        }	        return (c == '\n' || c == '\r');	    }	
+
+org.apache.commons.csv.Lexer.isEndOfFile	1	int	
+/**	     * @return true if the given character indicates end of file	     */	    boolean isEndOfFile(int c) {	        return c == ExtendedBufferedReader.END_OF_STREAM;	    }	
+
+org.apache.commons.csv.Lexer.isDelimiter	1	int	
+boolean isDelimiter(int c) {	        return c == delimiter;	    }	
+
+org.apache.commons.csv.Lexer.isEscape	1	int	
+boolean isEscape(int c) {	        return isEscaping && c == escape;	    }	
+
+org.apache.commons.csv.Lexer.isEncapsulator	1	int	
+boolean isEncapsulator(int c) {	        return isEncapsulating && c == encapsulator;	    }	
+
+org.apache.commons.csv.Lexer.isCommentStart	1	int	
+boolean isCommentStart(int c) {	        return isCommentEnabled && c == commmentStart;	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/CSVFormat.java
+org.apache.commons.csv.CSVFormat.CSVFormat	8	char	char	char	char	boolean	boolean	String	String[]	
+/**	     * Creates a customized CSV format.	     *	     * @param delimiter                 the char used for value separation	     * @param encapsulator              the char used as value encapsulation marker	     * @param commentStart              the char used for comment identification	     * @param escape                    the char used to escape special characters in values	     * @param surroundingSpacesIgnored  <tt>true</tt> when whitespaces enclosing values should be ignored	     * @param emptyLinesIgnored         <tt>true</tt> when the parser should skip emtpy lines	     * @param lineSeparator             the line separator to use for output	     * @param header                    the header	     */	    CSVFormat(	            char delimiter,	            char encapsulator,	            char commentStart,	            char escape,	            boolean surroundingSpacesIgnored,	            boolean emptyLinesIgnored,	            String lineSeparator,	            String[] header) {	        this.delimiter = delimiter;	        this.encapsulator = encapsulator;	        this.commentStart = commentStart;	        this.escape = escape;	        this.surroundingSpacesIgnored = surroundingSpacesIgnored;	        this.emptyLinesIgnored = emptyLinesIgnored;	        this.lineSeparator = lineSeparator;	        this.header = header;	    }	
+
+org.apache.commons.csv.CSVFormat.isLineBreak	1	char	
+/**	     * Returns true if the given character is a line break character.	     * 	     * @param c the character to check	     * 	     * @return true if <code>c</code> is a line break character	     */	    private static boolean isLineBreak(char c) {	        return c == '\n' || c == '\r';	    }	
+
+org.apache.commons.csv.CSVFormat.validate	0	
+/**	     * Verifies the consistency of the parameters and throws an IllegalArgumentException if necessary.	     */	    void validate() throws IllegalArgumentException {	        if (delimiter == encapsulator) {	            throw new IllegalArgumentException("The encapsulator character and the delimiter cannot be the same (\"" + encapsulator + "\")");	        }	        	        if (delimiter == escape) {	            throw new IllegalArgumentException("The escape character and the delimiter cannot be the same (\"" + escape + "\")");	        }	        	        if (delimiter == commentStart) {	            throw new IllegalArgumentException("The comment start character and the delimiter cannot be the same (\"" + commentStart + "\")");	        }	        	        if (encapsulator != DISABLED && encapsulator == commentStart) {	            throw new IllegalArgumentException("The comment start character and the encapsulator cannot be the same (\"" + commentStart + "\")");	        }	        	        if (escape != DISABLED && escape == commentStart) {	            throw new IllegalArgumentException("The comment start and the escape character cannot be the same (\"" + commentStart + "\")");	        }	    }	
+
+org.apache.commons.csv.CSVFormat.getDelimiter	0	
+/**	     * Returns the character delimiting the values (typically ';', ',' or '\t').	     * 	     * @return the delimiter character	     */	    public char getDelimiter() {	        return delimiter;	    }	
+
+org.apache.commons.csv.CSVFormat.withDelimiter	1	char	
+/**	     * Returns a copy of this format using the specified delimiter character.	     * 	     * @param delimiter the delimiter character	     * @return A copy of this format using the specified delimiter character	     * @throws IllegalArgumentException thrown if the specified character is a line break	     */	    public CSVFormat withDelimiter(char delimiter) {	        if (isLineBreak(delimiter)) {	            throw new IllegalArgumentException("The delimiter cannot be a line break");	        }		        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.getEncapsulator	0	
+/**	     * Returns the character used to encapsulate values containing special characters.	     * 	     * @return the encapsulator character	     */	    public char getEncapsulator() {	        return encapsulator;	    }	
+
+org.apache.commons.csv.CSVFormat.withEncapsulator	1	char	
+/**	     * Returns a copy of this format using the specified encapsulator character.	     * 	     * @param encapsulator the encapsulator character	     * @return A copy of this format using the specified encapsulator character	     * @throws IllegalArgumentException thrown if the specified character is a line break	     */	    public CSVFormat withEncapsulator(char encapsulator) {	        if (isLineBreak(encapsulator)) {	            throw new IllegalArgumentException("The encapsulator cannot be a line break");	        }	        	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.isEncapsulating	0	
+boolean isEncapsulating() {	        return this.encapsulator != DISABLED;	    }	
+
+org.apache.commons.csv.CSVFormat.getCommentStart	0	
+/**	     * Returns the character marking the start of a line comment.	     * 	     * @return the comment start marker.	     */	    public char getCommentStart() {	        return commentStart;	    }	
+
+org.apache.commons.csv.CSVFormat.withCommentStart	1	char	
+/**	     * Returns a copy of this format using the specified character as the comment start marker.	     * 	     * @param commentStart the comment start marker	     * @return A copy of this format using the specified character as the comment start marker	     * @throws IllegalArgumentException thrown if the specified character is a line break	     */	    public CSVFormat withCommentStart(char commentStart) {	        if (isLineBreak(commentStart)) {	            throw new IllegalArgumentException("The comment start character cannot be a line break");	        }	        	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.isCommentingEnabled	0	
+/**	     * Specifies whether comments are supported by this format.	     * 	     * @return <tt>true</tt> is comments are supported, <tt>false</tt> otherwise	     */	    public boolean isCommentingEnabled() {	        return this.commentStart != DISABLED;	    }	
+
+org.apache.commons.csv.CSVFormat.getEscape	0	
+/**	     * Returns the escape character.	     * 	     * @return the escape character	     */	    public char getEscape() {	        return escape;	    }	
+
+org.apache.commons.csv.CSVFormat.withEscape	1	char	
+/**	     * Returns a copy of this format using the specified escape character.	     * 	     * @param escape the escape character	     * @return A copy of this format using the specified escape character	     * @throws IllegalArgumentException thrown if the specified character is a line break	     */	    public CSVFormat withEscape(char escape) {	        if (isLineBreak(escape)) {	            throw new IllegalArgumentException("The escape character cannot be a line break");	        }	        	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.isEscaping	0	
+boolean isEscaping() {	        return this.escape != DISABLED;	    }	
+
+org.apache.commons.csv.CSVFormat.isSurroundingSpacesIgnored	0	
+/**	     * Specifies whether spaces around values are ignored when parsing input.	     * 	     * @return <tt>true</tt> if spaces around values are ignored, <tt>false</tt> if they are treated as part of the value.	     */	    public boolean isSurroundingSpacesIgnored() {	        return surroundingSpacesIgnored;	    }	
+
+org.apache.commons.csv.CSVFormat.withSurroundingSpacesIgnored	1	boolean	
+/**	     * Returns a copy of this format with the specified trimming behavior.	     *	     * @param surroundingSpacesIgnored the trimming behavior, <tt>true</tt> to remove the surrounding spaces,	     *                                 <tt>false</tt> to leave the spaces as is.	     * @return A copy of this format with the specified trimming behavior.	     */	    public CSVFormat withSurroundingSpacesIgnored(boolean surroundingSpacesIgnored) {	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.isEmptyLinesIgnored	0	
+/**	     * Specifies whether empty lines between records are ignored when parsing input.	     * 	     * @return <tt>true</tt> if empty lines between records are ignored, <tt>false</tt> if they are turned into empty records.	     */	    public boolean isEmptyLinesIgnored() {	        return emptyLinesIgnored;	    }	
+
+org.apache.commons.csv.CSVFormat.withEmptyLinesIgnored	1	boolean	
+/**	     * Returns a copy of this format with the specified empty line skipping behavior.	     *	     * @param emptyLinesIgnored the empty line skipping behavior, <tt>true</tt> to ignore the empty lines	     *                          between the records, <tt>false</tt> to translate empty lines to empty records.	     * @return A copy of this format  with the specified empty line skipping behavior.	     */	    public CSVFormat withEmptyLinesIgnored(boolean emptyLinesIgnored) {	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.getLineSeparator	0	
+/**	     * Returns the line separator delimiting output records.	     * 	     * @return the line separator	     */	    public String getLineSeparator() {	        return lineSeparator;	    }	
+
+org.apache.commons.csv.CSVFormat.withLineSeparator	1	String	
+/**	     * Returns a copy of this format using the specified output line separator.	     * 	     * @param lineSeparator the line separator to be used for output.	     * 	     * @return A copy of this format using the specified output line separator	     */	    public CSVFormat withLineSeparator(String lineSeparator) {	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.getHeader	0	
+String[] getHeader() {	        return header;	    }	
+
+org.apache.commons.csv.CSVFormat.withHeader	1	String	
+/**	     * Returns a copy of this format using the specified header. The header can	     * either be parsed automatically from the input file with:	     *	     * <pre>CSVFormat format = CSVFormat.DEFAULT.withHeader();</pre>	     *	     * or specified manually with:	     *	     * <pre>CSVFormat format = CSVFormat.DEFAULT.withHeader("name", "email", "phone");</pre>	     *	     * @param header the header, <tt>null</tt> if disabled, empty if parsed automatically, user specified otherwise.	     *	     * @return A copy of this format using the specified header	     */	    public CSVFormat withHeader(String... header) {	        return new CSVFormat(delimiter, encapsulator, commentStart, escape, surroundingSpacesIgnored, emptyLinesIgnored, lineSeparator, header);	    }	
+
+org.apache.commons.csv.CSVFormat.parse	1	Reader	
+/**	     * Parses the specified content.	     * 	     * @param in the input stream	     */	    public Iterable<CSVRecord> parse(Reader in) throws IOException {	        return new CSVParser(in, this);	    }	
+
+org.apache.commons.csv.CSVFormat.format	1	String	
+/**	     * Format the specified values.	     * 	     * @param values the values to format	     */	    public String format(String... values) {	        StringWriter out = new StringWriter();	        try {	            new CSVPrinter(out, this).println(values);	        } catch (IOException e) {	            // should not happen	        }	        	        return out.toString().trim();	    }	
+
+org.apache.commons.csv.CSVFormat.toString	0	
+@Override	    public String toString() {	        StringBuilder sb = new StringBuilder();	        sb.append("Delimiter=<").append(delimiter).append('>');	        if (isEscaping()) {	            sb.append(' ');	            sb.append("Escape=<").append(escape).append('>');	        }	        if (isEncapsulating()) {	            sb.append(' ');	            sb.append("Encapsulator=<").append(encapsulator).append('>');            	        }	        if (isCommentingEnabled()) {	            sb.append(' ');	            sb.append("CommentStart=<").append(commentStart).append('>');	        }	        if (isEmptyLinesIgnored()) {	            sb.append(" EmptyLines:ignored");            	        }	        if (isSurroundingSpacesIgnored()) {	            sb.append(" SurroundingSpaces:ignored");            	        }	        return sb.toString();	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/CSVLexer.java
+org.apache.commons.csv.CSVLexer.CSVLexer	2	CSVFormat	ExtendedBufferedReader	
+public CSVLexer(CSVFormat format, ExtendedBufferedReader in) {	        super(format, in);	    }	
+
+org.apache.commons.csv.CSVLexer.nextToken	1	Token	
+/**	     * Returns the next token.	     * <p/>	     * A token corresponds to a term, a record change or an end-of-file indicator.	     *	     * @param tkn an existing Token object to reuse. The caller is responsible to initialize the Token.	     * @return the next token found	     * @throws java.io.IOException on stream access error	     */	    @Override	    Token nextToken(Token tkn) throws IOException {		        // get the last read char (required for empty line detection)	        int lastChar = in.readAgain();		        //  read the next char and set eol	        /* note: unfortunately isEndOfLine may consumes a character silently.	        *       this has no effect outside of the method. so a simple workaround	        *       is to call 'readAgain' on the stream...	        */	        int c = in.read();	        boolean eol = isEndOfLine(c);	        c = in.readAgain();		        //  empty line detection: eol AND (last char was EOL or beginning)	        if (emptyLinesIgnored) {	            while (eol	                    && (lastChar == '\n' || lastChar == '\r' || lastChar == ExtendedBufferedReader.UNDEFINED)	                    && !isEndOfFile(lastChar)) {	                // go on char ahead ...	                lastChar = c;	                c = in.read();	                eol = isEndOfLine(c);	                c = in.readAgain();	                // reached end of file without any content (empty line at the end)	                if (isEndOfFile(c)) {	                    tkn.type = EOF;	                    // don't set tkn.isReady here because no content	                    return tkn;	                }	            }	        }		        // did we reach eof during the last iteration already ? EOF	        if (isEndOfFile(lastChar) || (!isDelimiter(lastChar) && isEndOfFile(c))) {	            tkn.type = EOF;	            // don't set tkn.isReady here because no content	            return tkn;	        }		        //  important: make sure a new char gets consumed in each iteration	        while (tkn.type == INVALID) {	            // ignore whitespaces at beginning of a token	            if (surroundingSpacesIgnored) {	                while (isWhitespace(c) && !eol) {	                    c = in.read();	                    eol = isEndOfLine(c);	                }	            }	            	            // ok, start of token reached: comment, encapsulated, or token	            if (isCommentStart(c)) {	                // ignore everything till end of line and continue (incr linecount)	                in.readLine();	                tkn = nextToken(tkn.reset());	            } else if (isDelimiter(c)) {	                // empty token return TOKEN("")	                tkn.type = TOKEN;	            } else if (eol) {	                // empty token return EORECORD("")	                //noop: tkn.content.append("");	                tkn.type = EORECORD;	            } else if (isEncapsulator(c)) {	                // consume encapsulated token	                encapsulatedTokenLexer(tkn, c);	            } else if (isEndOfFile(c)) {	                // end of file return EOF()	                //noop: tkn.content.append("");	                tkn.type = EOF;	                tkn.isReady = true; // there is data at EOF	            } else {	                // next token must be a simple token	                // add removed blanks when not ignoring whitespace chars...	                simpleTokenLexer(tkn, c);	            }	        }	        return tkn;	    }	
+
+org.apache.commons.csv.CSVLexer.simpleTokenLexer	2	Token	int	
+/**	     * A simple token lexer	     * <p/>	     * Simple token are tokens which are not surrounded by encapsulators.	     * A simple token might contain escaped delimiters (as \, or \;). The	     * token is finished when one of the following conditions become true:	     * <ul>	     *   <li>end of line has been reached (EORECORD)</li>	     *   <li>end of stream has been reached (EOF)</li>	     *   <li>an unescaped delimiter has been reached (TOKEN)</li>	     * </ul>	     *	     * @param tkn the current token	     * @param c   the current character	     * @return the filled token	     * @throws IOException on stream access error	     */	    private Token simpleTokenLexer(Token tkn, int c) throws IOException {	        while (true) {	            if (isEndOfLine(c)) {	                // end of record	                tkn.type = EORECORD;	                break;	            } else if (isEndOfFile(c)) {	                // end of file	                tkn.type = EOF;	                tkn.isReady = true; // There is data at EOF	                break;	            } else if (isDelimiter(c)) {	                // end of token	                tkn.type = TOKEN;	                break;	            } else if (isEscape(c)) {	                tkn.content.append((char) readEscape(c));	            } else {	                tkn.content.append((char) c);	            }		            c = in.read();	        }		        if (surroundingSpacesIgnored) {	            trimTrailingSpaces(tkn.content);	        }		        return tkn;	    }	
+
+org.apache.commons.csv.CSVLexer.encapsulatedTokenLexer	2	Token	int	
+/**	     * An encapsulated token lexer	     * <p/>	     * Encapsulated tokens are surrounded by the given encapsulating-string.	     * The encapsulator itself might be included in the token using a	     * doubling syntax (as "", '') or using escaping (as in \", \').	     * Whitespaces before and after an encapsulated token are ignored.	     *	     * @param tkn the current token	     * @param c   the current character	     * @return a valid token object	     * @throws IOException on invalid state	     */	    private Token encapsulatedTokenLexer(Token tkn, int c) throws IOException {	        // save current line	        int startLineNumber = getLineNumber();	        // ignore the given delimiter	        // assert c == delimiter;	        while (true) {	            c = in.read();	            	            if (isEscape(c)) {	                tkn.content.append((char) readEscape(c));	            } else if (isEncapsulator(c)) {	                if (isEncapsulator(in.lookAhead())) {	                    // double or escaped encapsulator -> add single encapsulator to token	                    c = in.read();	                    tkn.content.append((char) c);	                } else {	                    // token finish mark (encapsulator) reached: ignore whitespace till delimiter	                    while (true) {	                        c = in.read();	                        if (isDelimiter(c)) {	                            tkn.type = TOKEN;	                            return tkn;	                        } else if (isEndOfFile(c)) {	                            tkn.type = EOF;	                            tkn.isReady = true; // There is data at EOF	                            return tkn;	                        } else if (isEndOfLine(c)) {	                            // ok eo token reached	                            tkn.type = EORECORD;	                            return tkn;	                        } else if (!isWhitespace(c)) {	                            // error invalid char between token and next delimiter	                            throw new IOException("(line " + getLineNumber() + ") invalid char between encapsulated token and delimiter");	                        }	                    }	                }	            } else if (isEndOfFile(c)) {	                // error condition (end of file before end of token)	                throw new IOException("(startline " + startLineNumber + ") EOF reached before encapsulated token finished");	            } else {	                // consume character	                tkn.content.append((char) c);	            }	        }	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/CSVRecord.java
+org.apache.commons.csv.CSVRecord.CSVRecord	2	String[]	Map<String,Integer>	
+CSVRecord(String[] values, Map<String, Integer> mapping) {	        this.values = values != null ? values : EMPTY_STRING_ARRAY;	        this.mapping = mapping;	    }	
+
+org.apache.commons.csv.CSVRecord.get	1	int	
+/**	     * Returns a value by index.	     *	     * @param i the index of the column retrieved	     */	    public String get(int i) {	        return values[i];	    }	
+
+org.apache.commons.csv.CSVRecord.get	1	String	
+/**	     * Returns a value by name.	     *	     * @param name the name of the column to be retrieved	     * @return the column value, or {@code null} if the column name is not found	     * @throws IllegalStateException if no header mapping was provided	     */	    public String get(String name) {	        if (mapping == null) {	            throw new IllegalStateException("No header was specified, the record values can't be accessed by name");	        }		        Integer index = mapping.get(name);		        return index != null ? values[index.intValue()] : null;	    }	
+
+org.apache.commons.csv.CSVRecord.iterator	0	
+public Iterator<String> iterator() {	        return Arrays.asList(values).iterator();	    }	
+
+org.apache.commons.csv.CSVRecord.values	0	
+String[] values() {	        return values;	    }	
+
+org.apache.commons.csv.CSVRecord.size	0	
+/**	     * Returns the number of values in this record.	     */	    public int size() {	        return values.length;	    }	
+
+org.apache.commons.csv.CSVRecord.toString	0	
+@Override	    public String toString() {	        return Arrays.toString(values);	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/CSVPrinter.java
+org.apache.commons.csv.CSVPrinter.CSVPrinter	2	Appendable	CSVFormat	
+/**	     * Create a printer that will print values to the given stream following the CSVFormat.	     * <p/>	     * Currently, only a pure encapsulation format or a pure escaping format	     * is supported. Hybrid formats (encapsulation and escaping with a different character) are not supported.	     *	     * @param out    stream to which to print.	     * @param format the CSV format. If null the default format is used ({@link CSVFormat#DEFAULT})	     * @throws IllegalArgumentException thrown if the parameters of the format are inconsistent	     */	    public CSVPrinter(Appendable out, CSVFormat format) {	        this.out = out;	        this.format = format == null ? CSVFormat.DEFAULT : format;	        	        this.format.validate();	    }	
+
+org.apache.commons.csv.CSVPrinter.println	0	
+/**	     * Output a blank line	     */	    public void println() throws IOException {	        out.append(format.getLineSeparator());	        newLine = true;	    }	
+
+org.apache.commons.csv.CSVPrinter.flush	0	
+/**	     * Flush the underlying stream.	     * 	     * @throws IOException	     */	    public void flush() throws IOException {	        if (out instanceof Flushable) {	            ((Flushable) out).flush();	        }	    }	
+
+org.apache.commons.csv.CSVPrinter.println	1	String	
+/**	     * Print a single line of comma separated values.	     * The values will be quoted if needed.  Quotes and	     * newLine characters will be escaped.	     *	     * @param values values to be outputted.	     */	    public void println(String... values) throws IOException {	        for (String value : values) {	            print(value);	        }	        println();	    }	
+
+org.apache.commons.csv.CSVPrinter.printComment	1	String	
+/**	     * Put a comment on a new line among the comma separated values. Comments	     * will always begin on a new line and occupy a least one full line. The	     * character specified to start comments and a space will be inserted at	     * the beginning of each new line in the comment.	     * <p/>	     * If comments are disabled in the current CSV format this method does nothing.	     *	     * @param comment the comment to output	     */	    public void printComment(String comment) throws IOException {	        if (!format.isCommentingEnabled()) {	            return;	        }	        if (!newLine) {	            println();	        }	        out.append(format.getCommentStart());	        out.append(' ');	        for (int i = 0; i < comment.length(); i++) {	            char c = comment.charAt(i);	            switch (c) {	                case '\r':	                    if (i + 1 < comment.length() && comment.charAt(i + 1) == '\n') {	                        i++;	                    }	                //$FALL-THROUGH$ break intentionally excluded.	            case '\n':	                    println();	                    out.append(format.getCommentStart());	                    out.append(' ');	                    break;	                default:	                    out.append(c);	                    break;	            }	        }	        println();	    }	
+
+org.apache.commons.csv.CSVPrinter.print	3	CharSequence	int	int	
+private void print(CharSequence value, int offset, int len) throws IOException {        	        if (format.isEncapsulating()) {	            printAndEncapsulate(value, offset, len);	        } else if (format.isEscaping()) {	            printAndEscape(value, offset, len);	        } else {	            printSep();	            out.append(value, offset, offset + len);	        }	    }	
+
+org.apache.commons.csv.CSVPrinter.printSep	0	
+void printSep() throws IOException {	        if (newLine) {	            newLine = false;	        } else {	            out.append(format.getDelimiter());	        }	    }	
+
+org.apache.commons.csv.CSVPrinter.printAndEscape	3	CharSequence	int	int	
+void printAndEscape(CharSequence value, int offset, int len) throws IOException {	        int start = offset;	        int pos = offset;	        int end = offset + len;		        printSep();		        char delim = format.getDelimiter();	        char escape = format.getEscape();		        while (pos < end) {	            char c = value.charAt(pos);	            if (c == '\r' || c == '\n' || c == delim || c == escape) {	                // write out segment up until this char	                if (pos > start) {	                    out.append(value, start, pos);	                }	                if (c == '\n') {	                    c = 'n';	                } else if (c == '\r') {	                    c = 'r';	                }		                out.append(escape);	                out.append(c);		                start = pos + 1; // start on the current char after this one	            }		            pos++;	        }		        // write last segment	        if (pos > start) {	            out.append(value, start, pos);	        }	    }	
+
+org.apache.commons.csv.CSVPrinter.printAndEncapsulate	3	CharSequence	int	int	
+void printAndEncapsulate(CharSequence value, int offset, int len) throws IOException {	        boolean first = newLine;  // is this the first value on this line?	        boolean quote = false;	        int start = offset;	        int pos = offset;	        int end = offset + len;		        printSep();		        char delim = format.getDelimiter();	        char encapsulator = format.getEncapsulator();		        if (len <= 0) {	            // always quote an empty token that is the first	            // on the line, as it may be the only thing on the	            // line. If it were not quoted in that case,	            // an empty line has no tokens.	            if (first) {	                quote = true;	            }	        } else {	            char c = value.charAt(pos);		            // Hmmm, where did this rule come from?	            if (first	                    && (c < '0'	                    || (c > '9' && c < 'A')	                    || (c > 'Z' && c < 'a')	                    || (c > 'z'))) {	                quote = true;	                // } else if (c == ' ' || c == '\f' || c == '\t') {	            } else if (c <= '#') {	                // Some other chars at the start of a value caused the parser to fail, so for now	                // encapsulate if we start in anything less than '#'.  We are being conservative	                // by including the default comment char too.	                quote = true;	            } else {	                while (pos < end) {	                    c = value.charAt(pos);	                    if (c == '\n' || c == '\r' || c == encapsulator || c == delim) {	                        quote = true;	                        break;	                    }	                    pos++;	                }		                if (!quote) {	                    pos = end - 1;	                    c = value.charAt(pos);	                    // if (c == ' ' || c == '\f' || c == '\t') {	                    // Some other chars at the end caused the parser to fail, so for now	                    // encapsulate if we end in anything less than ' '	                    if (c <= ' ') {	                        quote = true;	                    }	                }	            }	        }		        if (!quote) {	            // no encapsulation needed - write out the original value	            out.append(value, start, end);	            return;	        }		        // we hit something that needed encapsulation	        out.append(encapsulator);		        // Pick up where we left off: pos should be positioned on the first character that caused	        // the need for encapsulation.	        while (pos < end) {	            char c = value.charAt(pos);	            if (c == encapsulator) {	                // write out the chunk up until this point		                // add 1 to the length to write out the encapsulator also	                out.append(value, start, pos + 1);	                // put the next starting position on the encapsulator so we will	                // write it out again with the next string (effectively doubling it)	                start = pos;	            }	            pos++;	        }		        // write the last segment	        out.append(value, start, pos);	        out.append(encapsulator);	    }	
+
+org.apache.commons.csv.CSVPrinter.print	2	String	boolean	
+/**	     * Print the string as the next value on the line. The value	     * will be escaped or encapsulated as needed if checkForEscape==true	     *	     * @param value value to be outputted.	     */	    public void print(String value, boolean checkForEscape) throws IOException {	        if (value == null) {	            // null values are considered empty	            value = "";	        }	        	        if (!checkForEscape) {	            // write directly from string	            printSep();	            out.append(value);	        } else {	            print(value, 0, value.length());	        }	    }	
+
+org.apache.commons.csv.CSVPrinter.print	1	String	
+/**	     * Print the string as the next value on the line. The value	     * will be escaped or encapsulated as needed.	     *	     * @param value value to be outputted.	     */	    public void print(String value) throws IOException {	        print(value, true);	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/CSVParser.java
+org.apache.commons.csv.CSVParser.CSVParser	1	Reader	
+/**	     * CSV parser using the default {@link CSVFormat}.	     *	     * @param input a Reader containing "csv-formatted" input	     * @throws IllegalArgumentException thrown if the parameters of the format are inconsistent	     */	    public CSVParser(Reader input) throws IOException {	        this(input, CSVFormat.DEFAULT);	    }	
+
+org.apache.commons.csv.CSVParser.CSVParser	2	Reader	CSVFormat	
+/**	     * Customized CSV parser using the given {@link CSVFormat}	     *	     * @param input    a Reader containing "csv-formatted" input	     * @param format the CSVFormat used for CSV parsing	     * @throws IllegalArgumentException thrown if the parameters of the format are inconsistent	     */	    public CSVParser(Reader input, CSVFormat format) throws IOException {	        format.validate();	        	        this.lexer = new CSVLexer(format, new ExtendedBufferedReader(input));	        	        this.headerMapping = initializeHeader(format);	    }	
+
+org.apache.commons.csv.CSVParser.CSVParser	2	String	CSVFormat	
+/**	     * Customized CSV parser using the given {@link CSVFormat}	     *	     * @param input    a String containing "csv-formatted" input	     * @param format the CSVFormat used for CSV parsing	     * @throws IllegalArgumentException thrown if the parameters of the format are inconsistent	     */	    public CSVParser(String input, CSVFormat format) throws IOException{	        this(new StringReader(input), format);	    }	
+
+org.apache.commons.csv.CSVParser.getRecords	0	
+/**	     * Parses the CSV input according to the given format and returns the content	     * as an array of {@link CSVRecord} entries.	     * <p/>	     * The returned content starts at the current parse-position in the stream.	     *	     * @return list of {@link CSVRecord} entries, may be empty	     * @throws IOException on parse error or input read-failure	     */	    public List<CSVRecord> getRecords() throws IOException {	        List<CSVRecord> records = new ArrayList<CSVRecord>();	        CSVRecord rec;	        while ((rec = getRecord()) != null) {	            records.add(rec);	        }	        return records;	    }	
+
+org.apache.commons.csv.CSVParser.getRecord	0	
+/**	     * Parses the next record from the current point in the stream.	     *	     * @return the record as an array of values, or <tt>null</tt> if the end of the stream has been reached	     * @throws IOException on parse error or input read-failure	     */	    CSVRecord getRecord() throws IOException {	        CSVRecord result = new CSVRecord(null, headerMapping);	        record.clear();	        do {	            reusableToken.reset();	            lexer.nextToken(reusableToken);	            switch (reusableToken.type) {	                case TOKEN:	                    record.add(reusableToken.content.toString());	                    break;	                case EORECORD:	                    record.add(reusableToken.content.toString());	                    break;	                case EOF:	                    if (reusableToken.isReady) {	                        record.add(reusableToken.content.toString());	                    } else {	                        result = null;	                    }	                    break;	                case INVALID:	                    throw new IOException("(line " + getLineNumber() + ") invalid parse sequence");	            }	        } while (reusableToken.type == TOKEN);	        	        if (!record.isEmpty()) {	            result = new CSVRecord(record.toArray(new String[record.size()]), headerMapping);	        }	        return result;	    }	
+
+org.apache.commons.csv.CSVParser.initializeHeader	1	CSVFormat	
+/**	     * Initializes the name to index mapping if the format defines a header.	     */	    private Map<String, Integer> initializeHeader(CSVFormat format) throws IOException {	        Map<String, Integer> hdrMap = null;	        if (format.getHeader() != null) {	            hdrMap = new HashMap<String, Integer>();		            String[] header = null;	            if (format.getHeader().length == 0) {	                // read the header from the first line of the file	                CSVRecord rec = getRecord();	                if (rec != null) {	                    header = rec.values();	                }	            } else {	                header = format.getHeader();	            }		            // build the name to index mappings	            if (header != null) {	                for (int i = 0; i < header.length; i++) {	                    hdrMap.put(header[i], Integer.valueOf(i));	                }	            }	        }	        return hdrMap;	    }	
+
+org.apache.commons.csv.CSVParser.iterator	0	
+/**	     * Returns an iterator on the records. IOExceptions occuring	     * during the iteration are wrapped in a RuntimeException.	     */	    public Iterator<CSVRecord> iterator() {	        return new Iterator<CSVRecord>() {	            private CSVRecord current;	            	            public boolean hasNext() {	                if (current == null) {	                    current = getNextRecord();	                }	                	                return current != null;	            }		            public CSVRecord next() {	                CSVRecord next = current;	                current = null;		                if (next == null) {	                    // hasNext() wasn't called before	                    next = getNextRecord();	                    if (next == null) {	                        throw new NoSuchElementException("No more CSV records available");	                    }	                }	                	                return next;	            }	            	            private CSVRecord getNextRecord() {	                try {	                    return getRecord();	                } catch (IOException e) {	                    throw new RuntimeException(e);	                }	            }		            public void remove() {	                throw new UnsupportedOperationException();	            }	        };	    }	
+
+org.apache.commons.csv.CSVParser.getLineNumber	0	
+/**	     * Returns the current line number in the input stream.	     * <p/>	     * ATTENTION: in case your csv has multiline-values the returned	     * number does not correspond to the record-number	     *	     * @return current line number	     */	    public int getLineNumber() {	        return lexer.getLineNumber();	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/ExtendedBufferedReader.java
+org.apache.commons.csv.ExtendedBufferedReader.ExtendedBufferedReader	1	Reader	
+/**	     * Created extended buffered reader using default buffer-size	     */	    ExtendedBufferedReader(Reader r) {	        super(r);	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.read	0	
+@Override	    public int read() throws IOException {	        int current = super.read();	        if (current == '\n') {	            lineCounter++;	        }	        lastChar = current;	        return lastChar;	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.readAgain	0	
+/**	     * Returns the last character that was read as an integer (0 to 65535). This	     * will be the last character returned by any of the read methods. This will	     * not include a character read using the {@link #peek()} method. If no	     * character has been read then this will return {@link #UNDEFINED}. If the	     * end of the stream was reached on the last read then this will return	     * {@link #END_OF_STREAM}.	     * 	     * @return the last character that was read	     */	    int readAgain() {	        return lastChar;	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.read	3	char[]	int	int	
+@Override	    public int read(char[] buf, int offset, int length) throws IOException {	        if (length == 0) {	            return 0;	        }	        	        int len = super.read(buf, offset, length);	        	        if (len > 0) {		            for (int i = offset; i < offset + len; i++) {	                char ch = buf[i];	                if (ch == '\n') {	                    if ('\r' != (i > 0 ? buf[i-1]: lastChar)) {	                        lineCounter++;                        	                    }	                } else if (ch == '\r') {	                    lineCounter++;	                }	            }		            lastChar = buf[offset + len - 1];		        } else if (len == -1) {	            lastChar = END_OF_STREAM;	        }	        	        return len;	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.readLine	0	
+/**	     * Calls {@link BufferedReader#readLine()} which drops the line terminator(s).	     * This method should only be called when processing a comment, otherwise	     * information can be lost.	     * <p>	     * Increments  {@link #lineCounter}	     * <p>	     * Sets {@link #lastChar} to {@link #END_OF_STREAM} at EOF, 	     * otherwise to last character on the line (won't be CR or LF) 	     * 	     * @return the line that was read, or null if reached EOF.	     */	    @Override	    public String readLine() throws IOException {	        String line = super.readLine();		        if (line != null) {	            if (line.length() > 0) {	                lastChar = line.charAt(line.length() - 1);	            }	            lineCounter++;	        } else {	            lastChar = END_OF_STREAM;	        }		        return line;	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.lookAhead	0	
+/**	     * Returns the next character in the current reader without consuming it. So	     * the next call to {@link #read()} will still return this value.	     * 	     * @return the next character	     * 	     * @throws IOException if there is an error in reading	     */	    int lookAhead() throws IOException {	        super.mark(1);	        int c = super.read();	        super.reset();		        return c;	    }	
+
+org.apache.commons.csv.ExtendedBufferedReader.getLineNumber	0	
+/**	     * Returns the nof line read	     *	     * @return the current-line-number (or -1)	     */	    int getLineNumber() {	        return lineCounter;	    }	
+
+Preprocessing file:	./repos/Csv-1_buggy/src/main/java/org/apache/commons/csv/Token.java
+org.apache.commons.csv.Token.reset	0	
+Token reset() {	        content.setLength(0);	        type = INVALID;	        isReady = false;	        return this;	    }	
+
